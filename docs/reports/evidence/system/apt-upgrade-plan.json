@@ -1,0 +1,111 @@
+{
+  "checked_at_utc": "2026-11-21T12:19:02.431148+03:00",
+  "apt_update_exit_code": 0,
+  "simulation_exit_code": 0,
+  "simulation": "Reading package lists...\nBuilding dependency tree...\nReading state information...\nCalculating upgrade...\nThe following packages were automatically installed and are no longer required:\n  bc libmbim-utils libqmi-utils libtcl8.6 python3-attr python3-automat\n  python3-constantly python3-hamcrest python3-hyperlink python3-incremental\n  python3-netifaces python3-pyasn1 python3-pyasn1-modules python3-serial\n  python3-service-identity python3-twisted python3-zope.interface tcl tcl8.6\n  usb-modeswitch usb-modeswitch-data\nUse 'apt autoremove' to remove them.\nThe following upgrades have been deferred due to phasing:\n  fwupd libfwupd3 ubuntu-drivers-common\nThe following packages will be upgraded:\n  base-files containerd distro-info libnss-systemd libopeniscsiusr\n  libpam-systemd libsystemd-shared libsystemd0 libudev1 motd-news-config\n  open-iscsi open-vm-tools python3-distro-info python3-distupgrade\n  python3-software-properties software-properties-common systemd\n  systemd-cryptsetup systemd-resolved systemd-sysv tmux ubuntu-pro-client\n  ubuntu-pro-client-l10n ubuntu-release-upgrader-core udev vim vim-common\n  vim-runtime vim-tiny xxd\n30 upgraded, 0 newly installed, 0 to remove and 3 not upgraded.\nInst motd-news-config [14ubuntu6.2] (14ubuntu6.3 Ubuntu:26.04/resolute-updates [all])\nInst base-files [14ubuntu6.2] (14ubuntu6.3 Ubuntu:26.04/resolute-updates [amd64])\nConf base-files (14ubuntu6.3 Ubuntu:26.04/resolute-updates [amd64])\nInst libsystemd0 [259.5-0ubuntu3.4] (259.9-0ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64]) [systemd:amd64 ]\nConf libsystemd0 (259.9-0ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64]) [systemd:amd64 ]\nInst libpam-systemd [259.5-0ubuntu3.4] (259.9-0ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64]) [systemd:amd64 ]\nInst systemd-sysv [259.5-0ubuntu3.4] (259.9-0ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64]) [systemd:amd64 ]\nInst systemd-resolved [259.5-0ubuntu3.4] (259.9-0ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64]) [systemd:amd64 ]\nInst libsystemd-shared [259.5-0ubuntu3.4] (259.9-0ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64]) [systemd:amd64 on libsystemd-shared:amd64] [udev:amd64 systemd:amd64 systemd-cryptsetup:amd64 ]\nConf libsystemd-shared (259.9-0ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64]) [udev:amd64 systemd:amd64 systemd-cryptsetup:amd64 ]\nInst systemd [259.5-0ubuntu3.4] (259.9-0ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64]) [udev:amd64 systemd-cryptsetup:amd64 ]\nInst systemd-cryptsetup [259.5-0ubuntu3.4] (259.9-0ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64]) [udev:amd64 ]\nInst udev [259.5-0ubuntu3.4] (259.9-0ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64]) []\nInst libudev1 [259.5-0ubuntu3.4] (259.9-0ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64])\nConf libudev1 (259.9-0ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64])\nInst open-iscsi [2.1.11-3ubuntu3] (2.1.11-3ubuntu3.1 Ubuntu:26.04/resolute-updates [amd64]) []\nInst libopeniscsiusr [2.1.11-3ubuntu3] (2.1.11-3ubuntu3.1 Ubuntu:26.04/resolute-updates [amd64])\nInst distro-info [1.15] (1.15ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64])\nInst libnss-systemd [259.5-0ubuntu3.4] (259.9-0ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64])\nInst ubuntu-pro-client-l10n [37.2ubuntu0.1] (38ubuntu0~26.04 Ubuntu:26.04/resolute-updates [amd64]) []\nInst ubuntu-pro-client [37.2ubuntu0.1] (38ubuntu0~26.04 Ubuntu:26.04/resolute-updates [amd64])\nInst vim [2:9.1.2141-1ubuntu4.9] (2:9.1.2141-1ubuntu4.10 Ubuntu:26.04/resolute-updates [amd64]) []\nInst vim-common [2:9.1.2141-1ubuntu4.9] (2:9.1.2141-1ubuntu4.10 Ubuntu:26.04/resolute-updates [all]) [vim-tiny:amd64 ]\nInst vim-tiny [2:9.1.2141-1ubuntu4.9] (2:9.1.2141-1ubuntu4.10 Ubuntu:26.04/resolute-updates [amd64]) []\nInst vim-runtime [2:9.1.2141-1ubuntu4.9] (2:9.1.2141-1ubuntu4.10 Ubuntu:26.04/resolute-updates [all])\nInst xxd [2:9.1.2141-1ubuntu4.9] (2:9.1.2141-1ubuntu4.10 Ubuntu:26.04/resolute-updates [amd64])\nInst python3-distro-info [1.15] (1.15ubuntu0.1 Ubuntu:26.04/resolute-updates [all])\nInst ubuntu-release-upgrader-core [1:26.04.25] (1:26.04.27 Ubuntu:26.04/resolute-updates [all]) []\nInst python3-distupgrade [1:26.04.25] (1:26.04.27 Ubuntu:26.04/resolute-updates [all])\nInst containerd [2.2.2-0ubuntu1.1] (2.2.2-0ubuntu1.2 Ubuntu:26.04/resolute-updates [amd64])\nInst software-properties-common [0.120.1] (0.120.2 Ubuntu:26.04/resolute-updates [all]) []\nInst python3-software-properties [0.120.1] (0.120.2 Ubuntu:26.04/resolute-updates [all])\nInst tmux [3.6a-2ubuntu0.1] (3.6a-2ubuntu0.2 Ubuntu:26.04/resolute-updates [amd64])\nInst open-vm-tools [2:13.0.10-1ubuntu1] (2:13.0.10-1ubuntu1.1 Ubuntu:26.04/resolute-updates [amd64])\nConf motd-news-config (14ubuntu6.3 Ubuntu:26.04/resolute-updates [all])\nConf libpam-systemd (259.9-0ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64])\nConf systemd-sysv (259.9-0ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64])\nConf systemd-resolved (259.9-0ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64])\nConf systemd (259.9-0ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64])\nConf systemd-cryptsetup (259.9-0ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64])\nConf udev (259.9-0ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64])\nConf open-iscsi (2.1.11-3ubuntu3.1 Ubuntu:26.04/resolute-updates [amd64])\nConf libopeniscsiusr (2.1.11-3ubuntu3.1 Ubuntu:26.04/resolute-updates [amd64])\nConf distro-info (1.15ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64])\nConf libnss-systemd (259.9-0ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64])\nConf ubuntu-pro-client-l10n (38ubuntu0~26.04 Ubuntu:26.04/resolute-updates [amd64])\nConf ubuntu-pro-client (38ubuntu0~26.04 Ubuntu:26.04/resolute-updates [amd64])\nConf vim (2:9.1.2141-1ubuntu4.10 Ubuntu:26.04/resolute-updates [amd64])\nConf vim-common (2:9.1.2141-1ubuntu4.10 Ubuntu:26.04/resolute-updates [all])\nConf vim-tiny (2:9.1.2141-1ubuntu4.10 Ubuntu:26.04/resolute-updates [amd64])\nConf vim-runtime (2:9.1.2141-1ubuntu4.10 Ubuntu:26.04/resolute-updates [all])\nConf xxd (2:9.1.2141-1ubuntu4.10 Ubuntu:26.04/resolute-updates [amd64])\nConf python3-distro-info (1.15ubuntu0.1 Ubuntu:26.04/resolute-updates [all])\nConf ubuntu-release-upgrader-core (1:26.04.27 Ubuntu:26.04/resolute-updates [all])\nConf python3-distupgrade (1:26.04.27 Ubuntu:26.04/resolute-updates [all])\nConf containerd (2.2.2-0ubuntu1.2 Ubuntu:26.04/resolute-updates [amd64])\nConf software-properties-common (0.120.2 Ubuntu:26.04/resolute-updates [all])\nConf python3-software-properties (0.120.2 Ubuntu:26.04/resolute-updates [all])\nConf tmux (3.6a-2ubuntu0.2 Ubuntu:26.04/resolute-updates [amd64])\nConf open-vm-tools (2:13.0.10-1ubuntu1.1 Ubuntu:26.04/resolute-updates [amd64])\n",
+  "core_package_policy": "docker.io:\n  Installed: 29.1.3-0ubuntu4.1\n  Candidate: 29.1.3-0ubuntu4.1\n  Version table:\n *** 29.1.3-0ubuntu4.1 500\n        500 http://mirror.veesp.com/ubuntu resolute-updates/universe amd64 Packages\n        500 http://security.ubuntu.com/ubuntu resolute-security/universe amd64 Packages\n        100 /var/lib/dpkg/status\n     29.1.3-0ubuntu4 500\n        500 http://mirror.veesp.com/ubuntu resolute/universe amd64 Packages\ncontainerd:\n  Installed: 2.2.2-0ubuntu1.1\n  Candidate: 2.2.2-0ubuntu1.2\n  Version table:\n     2.2.2-0ubuntu1.2 500\n        500 http://mirror.veesp.com/ubuntu resolute-updates/main amd64 Packages\n *** 2.2.2-0ubuntu1.1 500\n        500 http://security.ubuntu.com/ubuntu resolute-security/main amd64 Packages\n        100 /var/lib/dpkg/status\n     2.2.2-0ubuntu1 500\n        500 http://mirror.veesp.com/ubuntu resolute/main amd64 Packages\ndocker-compose-v2:\n  Installed: 2.40.3+ds1-0ubuntu1\n  Candidate: 2.40.3+ds1-0ubuntu1\n  Version table:\n *** 2.40.3+ds1-0ubuntu1 500\n        500 http://mirror.veesp.com/ubuntu resolute/universe amd64 Packages\n        100 /var/lib/dpkg/status\nlinux-image-generic:\n  Installed: 7.0.0-43.43\n  Candidate: 7.0.0-43.43\n  Version table:\n *** 7.0.0-43.43 500\n        500 http://mirror.veesp.com/ubuntu resolute-updates/main amd64 Packages\n        500 http://security.ubuntu.com/ubuntu resolute-security/main amd64 Packages\n        100 /var/lib/dpkg/status\n     7.0.0-14.14 500\n        500 http://mirror.veesp.com/ubuntu resolute/main amd64 Packages\nopenssh-server:\n  Installed: 1:10.2p1-2ubuntu3.8\n  Candidate: 1:10.2p1-2ubuntu3.8\n  Version table:\n *** 1:10.2p1-2ubuntu3.8 500\n        500 http://mirror.veesp.com/ubuntu resolute-updates/main amd64 Packages\n        500 http://security.ubuntu.com/ubuntu resolute-security/main amd64 Packages\n        100 /var/lib/dpkg/status\n     1:10.2p1-2ubuntu3 500\n        500 http://mirror.veesp.com/ubuntu resolute/main amd64 Packages\ncertbot:\n  Installed: 4.0.0-4\n  Candidate: 4.0.0-4\n  Version table:\n *** 4.0.0-4 500\n        500 http://mirror.veesp.com/ubuntu resolute/universe amd64 Packages\n        100 /var/lib/dpkg/status\n",
+  "held_packages": "",
+  "reboot_required": "*** System restart required ***\n",
+  "containers_before": [
+    {
+      "id": "f8b71d986f1f9c701f56edc4dce0de84bc6930fb989515167bc4c01f23ca5f05",
+      "name": "3dp-frontend",
+      "state": "running",
+      "restarts": 0,
+      "health": null
+    },
+    {
+      "id": "d9ce76309fd7e77782f31203659b90b5dd4bdcc61df4aada668c5f9c6ff75a6d",
+      "name": "3dp-backend",
+      "state": "running",
+      "restarts": 0,
+      "health": null
+    },
+    {
+      "id": "ed7a082661c71506764fe757eb76309a63aeb8331e7a2199ef9e74b0db4f5342",
+      "name": "3dp-postgres",
+      "state": "running",
+      "restarts": 0,
+      "health": "healthy"
+    },
+    {
+      "id": "b22d2e6dbf4484583478e397ee4b7e98e199e5a3c110767ed4c3836e3d6e19a8",
+      "name": "3x-ui",
+      "state": "running",
+      "restarts": 0,
+      "health": null
+    },
+    {
+      "id": "d6bc098cf9eb98284e45bd6883f2b391bb2212d1743f5dc62a45447b474ebe5c",
+      "name": "amnezia-awg2",
+      "state": "running",
+      "restarts": 0,
+      "health": null
+    },
+    {
+      "id": "bb2cf4ca556b8e91bd360416beb0c61314bcad9d868ccd573d8c50f0dfa4cebd",
+      "name": "amnezia-telemt",
+      "state": "running",
+      "restarts": 0,
+      "health": null
+    },
+    {
+      "id": "55a6ab1afa9c9856754daa623258e063e2e2419013b0eb5e26b97e3b2a39e5ff",
+      "name": "amnezia-xray",
+      "state": "running",
+      "restarts": 0,
+      "health": null
+    }
+  ],
+  "containers_after": [
+    {
+      "id": "f8b71d986f1f9c701f56edc4dce0de84bc6930fb989515167bc4c01f23ca5f05",
+      "name": "3dp-frontend",
+      "state": "running",
+      "restarts": 0,
+      "health": null
+    },
+    {
+      "id": "d9ce76309fd7e77782f31203659b90b5dd4bdcc61df4aada668c5f9c6ff75a6d",
+      "name": "3dp-backend",
+      "state": "running",
+      "restarts": 0,
+      "health": null
+    },
+    {
+      "id": "ed7a082661c71506764fe757eb76309a63aeb8331e7a2199ef9e74b0db4f5342",
+      "name": "3dp-postgres",
+      "state": "running",
+      "restarts": 0,
+      "health": "healthy"
+    },
+    {
+      "id": "b22d2e6dbf4484583478e397ee4b7e98e199e5a3c110767ed4c3836e3d6e19a8",
+      "name": "3x-ui",
+      "state": "running",
+      "restarts": 0,
+      "health": null
+    },
+    {
+      "id": "d6bc098cf9eb98284e45bd6883f2b391bb2212d1743f5dc62a45447b474ebe5c",
+      "name": "amnezia-awg2",
+      "state": "running",
+      "restarts": 0,
+      "health": null
+    },
+    {
+      "id": "bb2cf4ca556b8e91bd360416beb0c61314bcad9d868ccd573d8c50f0dfa4cebd",
+      "name": "amnezia-telemt",
+      "state": "running",
+      "restarts": 0,
+      "health": null
+    },
+    {
+      "id": "55a6ab1afa9c9856754daa623258e063e2e2419013b0eb5e26b97e3b2a39e5ff",
+      "name": "amnezia-xray",
+      "state": "running",
+      "restarts": 0,
+      "health": null
+    }
+  ]
+}

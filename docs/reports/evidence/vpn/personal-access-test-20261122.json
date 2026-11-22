@@ -1,0 +1,28 @@
+{
+  "success": true,
+  "checks": [
+    {
+      "url": "https://example.com/",
+      "curl_exit": 0,
+      "http_status": "200"
+    },
+    {
+      "url": "https://www.cloudflare.com/cdn-cgi/trace",
+      "curl_exit": 0,
+      "http_status": "200",
+      "egress_is_server": true
+    }
+  ],
+  "profile_matches": {
+    "existing_client": true,
+    "server_name": true,
+    "short_id": true,
+    "public_address": true
+  },
+  "test_path": "Temporary bridge client -> public server TCP 443 -> VLESS REALITY -> Internet",
+  "temporary_client_removed": true,
+  "server_config_unchanged": true,
+  "server_not_restarted": true,
+  "checked_at_utc": "2026-11-22T09:30:40.624740+00:00",
+  "phone_network_not_tested": true
+}

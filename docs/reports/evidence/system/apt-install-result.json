@@ -1,0 +1,369 @@
+{
+  "completed_at_utc": "2026-11-21T12:23:25.628214+03:00",
+  "unit": "vpn-maintenance-upgrade-20261121",
+  "installation_exit_code": 0,
+  "packages": [
+    {
+      "package": "motd-news-config",
+      "expected_version": "14ubuntu6.3",
+      "installed_version": "14ubuntu6.3",
+      "status": "installed",
+      "matches": true
+    },
+    {
+      "package": "base-files",
+      "expected_version": "14ubuntu6.3",
+      "installed_version": "14ubuntu6.3",
+      "status": "installed",
+      "matches": true
+    },
+    {
+      "package": "libsystemd0",
+      "expected_version": "259.9-0ubuntu0.1",
+      "installed_version": "259.9-0ubuntu0.1",
+      "status": "installed",
+      "matches": true
+    },
+    {
+      "package": "libpam-systemd",
+      "expected_version": "259.9-0ubuntu0.1",
+      "installed_version": "259.9-0ubuntu0.1",
+      "status": "installed",
+      "matches": true
+    },
+    {
+      "package": "systemd-sysv",
+      "expected_version": "259.9-0ubuntu0.1",
+      "installed_version": "259.9-0ubuntu0.1",
+      "status": "installed",
+      "matches": true
+    },
+    {
+      "package": "systemd-resolved",
+      "expected_version": "259.9-0ubuntu0.1",
+      "installed_version": "259.9-0ubuntu0.1",
+      "status": "installed",
+      "matches": true
+    },
+    {
+      "package": "libsystemd-shared",
+      "expected_version": "259.9-0ubuntu0.1",
+      "installed_version": "259.9-0ubuntu0.1",
+      "status": "installed",
+      "matches": true
+    },
+    {
+      "package": "systemd",
+      "expected_version": "259.9-0ubuntu0.1",
+      "installed_version": "259.9-0ubuntu0.1",
+      "status": "installed",
+      "matches": true
+    },
+    {
+      "package": "systemd-cryptsetup",
+      "expected_version": "259.9-0ubuntu0.1",
+      "installed_version": "259.9-0ubuntu0.1",
+      "status": "installed",
+      "matches": true
+    },
+    {
+      "package": "udev",
+      "expected_version": "259.9-0ubuntu0.1",
+      "installed_version": "259.9-0ubuntu0.1",
+      "status": "installed",
+      "matches": true
+    },
+    {
+      "package": "libudev1",
+      "expected_version": "259.9-0ubuntu0.1",
+      "installed_version": "259.9-0ubuntu0.1",
+      "status": "installed",
+      "matches": true
+    },
+    {
+      "package": "open-iscsi",
+      "expected_version": "2.1.11-3ubuntu3.1",
+      "installed_version": "2.1.11-3ubuntu3.1",
+      "status": "installed",
+      "matches": true
+    },
+    {
+      "package": "libopeniscsiusr",
+      "expected_version": "2.1.11-3ubuntu3.1",
+      "installed_version": "2.1.11-3ubuntu3.1",
+      "status": "installed",
+      "matches": true
+    },
+    {
+      "package": "distro-info",
+      "expected_version": "1.15ubuntu0.1",
+      "installed_version": "1.15ubuntu0.1",
+      "status": "installed",
+      "matches": true
+    },
+    {
+      "package": "libnss-systemd",
+      "expected_version": "259.9-0ubuntu0.1",
+      "installed_version": "259.9-0ubuntu0.1",
+      "status": "installed",
+      "matches": true
+    },
+    {
+      "package": "ubuntu-pro-client-l10n",
+      "expected_version": "38ubuntu0~26.04",
+      "installed_version": "38ubuntu0~26.04",
+      "status": "installed",
+      "matches": true
+    },
+    {
+      "package": "ubuntu-pro-client",
+      "expected_version": "38ubuntu0~26.04",
+      "installed_version": "38ubuntu0~26.04",
+      "status": "installed",
+      "matches": true
+    },
+    {
+      "package": "vim",
+      "expected_version": "2:9.1.2141-1ubuntu4.10",
+      "installed_version": "2:9.1.2141-1ubuntu4.10",
+      "status": "installed",
+      "matches": true
+    },
+    {
+      "package": "vim-common",
+      "expected_version": "2:9.1.2141-1ubuntu4.10",
+      "installed_version": "2:9.1.2141-1ubuntu4.10",
+      "status": "installed",
+      "matches": true
+    },
+    {
+      "package": "vim-tiny",
+      "expected_version": "2:9.1.2141-1ubuntu4.10",
+      "installed_version": "2:9.1.2141-1ubuntu4.10",
+      "status": "installed",
+      "matches": true
+    },
+    {
+      "package": "vim-runtime",
+      "expected_version": "2:9.1.2141-1ubuntu4.10",
+      "installed_version": "2:9.1.2141-1ubuntu4.10",
+      "status": "installed",
+      "matches": true
+    },
+    {
+      "package": "xxd",
+      "expected_version": "2:9.1.2141-1ubuntu4.10",
+      "installed_version": "2:9.1.2141-1ubuntu4.10",
+      "status": "installed",
+      "matches": true
+    },
+    {
+      "package": "python3-distro-info",
+      "expected_version": "1.15ubuntu0.1",
+      "installed_version": "1.15ubuntu0.1",
+      "status": "installed",
+      "matches": true
+    },
+    {
+      "package": "ubuntu-release-upgrader-core",
+      "expected_version": "1:26.04.27",
+      "installed_version": "1:26.04.27",
+      "status": "installed",
+      "matches": true
+    },
+    {
+      "package": "python3-distupgrade",
+      "expected_version": "1:26.04.27",
+      "installed_version": "1:26.04.27",
+      "status": "installed",
+      "matches": true
+    },
+    {
+      "package": "containerd",
+      "expected_version": "2.2.2-0ubuntu1.2",
+      "installed_version": "2.2.2-0ubuntu1.2",
+      "status": "installed",
+      "matches": true
+    },
+    {
+      "package": "software-properties-common",
+      "expected_version": "0.120.2",
+      "installed_version": "0.120.2",
+      "status": "installed",
+      "matches": true
+    },
+    {
+      "package": "python3-software-properties",
+      "expected_version": "0.120.2",
+      "installed_version": "0.120.2",
+      "status": "installed",
+      "matches": true
+    },
+    {
+      "package": "tmux",
+      "expected_version": "3.6a-2ubuntu0.2",
+      "installed_version": "3.6a-2ubuntu0.2",
+      "status": "installed",
+      "matches": true
+    },
+    {
+      "package": "open-vm-tools",
+      "expected_version": "2:13.0.10-1ubuntu1.1",
+      "installed_version": "2:13.0.10-1ubuntu1.1",
+      "status": "installed",
+      "matches": true
+    }
+  ],
+  "containers_before": [
+    {
+      "id": "f8b71d986f1f9c701f56edc4dce0de84bc6930fb989515167bc4c01f23ca5f05",
+      "name": "3dp-frontend",
+      "state": "running",
+      "restarts": 0,
+      "started_at": "2026-11-07T15:00:16.232985159Z",
+      "health": null
+    },
+    {
+      "id": "d9ce76309fd7e77782f31203659b90b5dd4bdcc61df4aada668c5f9c6ff75a6d",
+      "name": "3dp-backend",
+      "state": "running",
+      "restarts": 0,
+      "started_at": "2026-11-07T15:00:16.181048251Z",
+      "health": null
+    },
+    {
+      "id": "ed7a082661c71506764fe757eb76309a63aeb8331e7a2199ef9e74b0db4f5342",
+      "name": "3dp-postgres",
+      "state": "running",
+      "restarts": 0,
+      "started_at": "2026-11-07T15:00:16.182886553Z",
+      "health": "healthy"
+    },
+    {
+      "id": "b22d2e6dbf4484583478e397ee4b7e98e199e5a3c110767ed4c3836e3d6e19a8",
+      "name": "3x-ui",
+      "state": "running",
+      "restarts": 0,
+      "started_at": "2026-11-07T15:00:16.222701882Z",
+      "health": null
+    },
+    {
+      "id": "d6bc098cf9eb98284e45bd6883f2b391bb2212d1743f5dc62a45447b474ebe5c",
+      "name": "amnezia-awg2",
+      "state": "running",
+      "restarts": 0,
+      "started_at": "2026-11-07T15:00:16.234330285Z",
+      "health": null
+    },
+    {
+      "id": "bb2cf4ca556b8e91bd360416beb0c61314bcad9d868ccd573d8c50f0dfa4cebd",
+      "name": "amnezia-telemt",
+      "state": "running",
+      "restarts": 0,
+      "started_at": "2026-11-07T15:00:16.180385391Z",
+      "health": null
+    },
+    {
+      "id": "55a6ab1afa9c9856754daa623258e063e2e2419013b0eb5e26b97e3b2a39e5ff",
+      "name": "amnezia-xray",
+      "state": "running",
+      "restarts": 0,
+      "started_at": "2026-11-07T15:00:16.220454131Z",
+      "health": null
+    }
+  ],
+  "containers_after": [
+    {
+      "id": "f8b71d986f1f9c701f56edc4dce0de84bc6930fb989515167bc4c01f23ca5f05",
+      "name": "3dp-frontend",
+      "state": "running",
+      "restarts": 0,
+      "started_at": "2026-11-07T15:00:16.232985159Z",
+      "health": null
+    },
+    {
+      "id": "d9ce76309fd7e77782f31203659b90b5dd4bdcc61df4aada668c5f9c6ff75a6d",
+      "name": "3dp-backend",
+      "state": "running",
+      "restarts": 0,
+      "started_at": "2026-11-07T15:00:16.181048251Z",
+      "health": null
+    },
+    {
+      "id": "ed7a082661c71506764fe757eb76309a63aeb8331e7a2199ef9e74b0db4f5342",
+      "name": "3dp-postgres",
+      "state": "running",
+      "restarts": 0,
+      "started_at": "2026-11-07T15:00:16.182886553Z",
+      "health": "healthy"
+    },
+    {
+      "id": "b22d2e6dbf4484583478e397ee4b7e98e199e5a3c110767ed4c3836e3d6e19a8",
+      "name": "3x-ui",
+      "state": "running",
+      "restarts": 0,
+      "started_at": "2026-11-07T15:00:16.222701882Z",
+      "health": null
+    },
+    {
+      "id": "d6bc098cf9eb98284e45bd6883f2b391bb2212d1743f5dc62a45447b474ebe5c",
+      "name": "amnezia-awg2",
+      "state": "running",
+      "restarts": 0,
+      "started_at": "2026-11-07T15:00:16.234330285Z",
+      "health": null
+    },
+    {
+      "id": "bb2cf4ca556b8e91bd360416beb0c61314bcad9d868ccd573d8c50f0dfa4cebd",
+      "name": "amnezia-telemt",
+      "state": "running",
+      "restarts": 0,
+      "started_at": "2026-11-07T15:00:16.180385391Z",
+      "health": null
+    },
+    {
+      "id": "55a6ab1afa9c9856754daa623258e063e2e2419013b0eb5e26b97e3b2a39e5ff",
+      "name": "amnezia-xray",
+      "state": "running",
+      "restarts": 0,
+      "started_at": "2026-11-07T15:00:16.220454131Z",
+      "health": null
+    }
+  ],
+  "services_before": {
+    "ssh": "active",
+    "docker": "active",
+    "containerd": "active",
+    "systemd-resolved": "active",
+    "fail2ban": "active"
+  },
+  "services_after": {
+    "ssh": "active",
+    "docker": "active",
+    "containerd": "active",
+    "systemd-resolved": "active",
+    "fail2ban": "active"
+  },
+  "dpkg_audit": {
+    "exit_code": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "apt_dependency_check": {
+    "exit_code": 0,
+    "stdout": "Reading package lists...\nBuilding dependency tree...\nReading state information...\n",
+    "stderr": ""
+  },
+  "failed_units": {
+    "exit_code": 0,
+    "stdout": "  UNIT LOAD ACTIVE SUB DESCRIPTION\n\n0 loaded units listed.\n",
+    "stderr": ""
+  },
+  "kernel": {
+    "exit_code": 0,
+    "stdout": "7.0.0-42-generic\n",
+    "stderr": ""
+  },
+  "reboot_required": true,
+  "reboot_required_packages": "linux-image-7.0.0-43-generic\nlinux-base\nlibc6\n"
+}

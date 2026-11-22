@@ -1,0 +1,6 @@
+{
+  "success": false,
+  "phase": "checking_generated_tls",
+  "error": "Test Hysteria generation failed",
+  "production_services_untouched": true
+}

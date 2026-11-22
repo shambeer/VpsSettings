@@ -1,0 +1,70 @@
+{
+  "checked_at_utc": "2026-11-21T09:04:51.489282+00:00",
+  "docker_rm_exit_code": 0,
+  "removed": [
+    "loki-stack-promtail-1",
+    "loki-stack-loki-1",
+    "loki-stack-grafana-1"
+  ],
+  "remaining_services": [
+    {
+      "name": "amnezia-xray",
+      "present": true,
+      "state": "running",
+      "restarts_before": 0,
+      "restarts_after": 0,
+      "health": null
+    },
+    {
+      "name": "3x-ui",
+      "present": true,
+      "state": "running",
+      "restarts_before": 0,
+      "restarts_after": 0,
+      "health": null
+    },
+    {
+      "name": "amnezia-telemt",
+      "present": true,
+      "state": "running",
+      "restarts_before": 0,
+      "restarts_after": 0,
+      "health": null
+    },
+    {
+      "name": "amnezia-awg2",
+      "present": true,
+      "state": "running",
+      "restarts_before": 0,
+      "restarts_after": 0,
+      "health": null
+    },
+    {
+      "name": "3dp-backend",
+      "present": true,
+      "state": "running",
+      "restarts_before": 0,
+      "restarts_after": 0,
+      "health": null
+    },
+    {
+      "name": "3dp-postgres",
+      "present": true,
+      "state": "running",
+      "restarts_before": 0,
+      "restarts_after": 0,
+      "health": "healthy"
+    },
+    {
+      "name": "3dp-frontend",
+      "present": true,
+      "state": "running",
+      "restarts_before": 0,
+      "restarts_after": 0,
+      "health": null
+    }
+  ],
+  "images_unchanged": true,
+  "volumes_unchanged": true,
+  "networks_unchanged": true
+}

@@ -1,0 +1,6 @@
+{
+  "success": false,
+  "phase": "refreshing_only_test_copies",
+  "error": "Refreshed test backend login failed",
+  "production_services_untouched": true
+}

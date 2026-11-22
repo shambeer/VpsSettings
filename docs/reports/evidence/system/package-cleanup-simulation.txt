@@ -1,0 +1,20 @@
+No modems were found
+Reading package lists...
+Building dependency tree...
+Reading state information...
+Solving dependencies...
+The following packages were automatically installed and are no longer required:
+  bc libmbim-utils libqmi-utils libtcl8.6 python3-attr python3-automat
+  python3-constantly python3-hamcrest python3-hyperlink python3-incremental
+  python3-netifaces python3-pyasn1 python3-pyasn1-modules python3-serial
+  python3-service-identity python3-twisted python3-zope.interface tcl tcl8.6
+  usb-modeswitch usb-modeswitch-data
+Use 'apt autoremove' to remove them.
+The following packages will be REMOVED:
+  landscape-common* lxd-agent-loader* lxd-installer* modemmanager* snapd*
+0 upgraded, 0 newly installed, 5 to remove and 33 not upgraded.
+Purg landscape-common [26.02.2-0ubuntu1]
+Purg lxd-agent-loader [0.13ubuntu0]
+Purg lxd-installer [14ubuntu0]
+Purg modemmanager [1.25.95-1ubuntu1]
+Purg snapd [2.76.3+ubuntu26.04]

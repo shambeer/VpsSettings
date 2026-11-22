@@ -1,0 +1,29 @@
+{
+  "name": "3x-ui",
+  "installed_version": "3.9.0",
+  "network_mode": "bridge",
+  "networks": [
+    "bridge"
+  ],
+  "ports": {
+    "2053/tcp": [
+      {
+        "HostIp": "",
+        "HostPort": "2053"
+      }
+    ]
+  },
+  "mount_destinations": [
+    "/etc/x-ui",
+    "/etc/xray",
+    "/root/cert"
+  ],
+  "privileged": false,
+  "cap_add": null,
+  "restart_policy": {
+    "Name": "always",
+    "MaximumRetryCount": 0
+  },
+  "command_overridden": false,
+  "entrypoint_overridden": false
+}

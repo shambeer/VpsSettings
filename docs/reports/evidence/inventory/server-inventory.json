@@ -1,0 +1,447 @@
+{
+  "collected_at_utc": "2026-11-21T08:56:19.738055+00:00",
+  "containers": [
+    {
+      "name": "loki-stack-promtail-1",
+      "image": "grafana/promtail:latest",
+      "image_id": "sha256:6cfa64ec432b24a912d640e2edb940eeae2666f61861a66c121d763dd7241381",
+      "image_created": "2026-03-25T13:16:50.428677467Z",
+      "image_digests": [
+        "grafana/promtail@sha256:6cfa64ec432b24a912d640e2edb940eeae2666f61861a66c121d763dd7241381"
+      ],
+      "state": "exited",
+      "restart_policy": {
+        "Name": "unless-stopped",
+        "MaximumRetryCount": 0
+      },
+      "network_mode": "loki-stack_default",
+      "ports": {},
+      "mounts": [
+        {
+          "type": "bind",
+          "source": "/var/log",
+          "destination": "/var/log",
+          "read_write": false
+        }
+      ],
+      "compose_project": "loki-stack",
+      "compose_working_dir": "/root/loki-stack",
+      "compose_config_files": "/root/loki-stack/docker-compose.yml",
+      "networks": [
+        "loki-stack_default"
+      ]
+    },
+    {
+      "name": "loki-stack-loki-1",
+      "image": "grafana/loki:latest",
+      "image_id": "sha256:0db216b630ae1f348a1584c67f3cead8b4c1fc839169a39501db664744158e28",
+      "image_created": "2026-10-20T21:46:04.149536507Z",
+      "image_digests": [
+        "grafana/loki@sha256:0db216b630ae1f348a1584c67f3cead8b4c1fc839169a39501db664744158e28"
+      ],
+      "state": "exited",
+      "restart_policy": {
+        "Name": "unless-stopped",
+        "MaximumRetryCount": 0
+      },
+      "network_mode": "loki-stack_default",
+      "ports": {},
+      "mounts": [],
+      "compose_project": "loki-stack",
+      "compose_working_dir": "/root/loki-stack",
+      "compose_config_files": "/root/loki-stack/docker-compose.yml",
+      "networks": [
+        "loki-stack_default"
+      ]
+    },
+    {
+      "name": "loki-stack-grafana-1",
+      "image": "grafana/grafana:latest",
+      "image_id": "sha256:488984b716c0862639f91a698adbe2862677a5a07bad42da5f03f3030883b205",
+      "image_created": "2026-10-26T22:26:40Z",
+      "image_digests": [
+        "grafana/grafana@sha256:488984b716c0862639f91a698adbe2862677a5a07bad42da5f03f3030883b205"
+      ],
+      "state": "exited",
+      "restart_policy": {
+        "Name": "unless-stopped",
+        "MaximumRetryCount": 0
+      },
+      "network_mode": "loki-stack_default",
+      "ports": {},
+      "mounts": [],
+      "compose_project": "loki-stack",
+      "compose_working_dir": "/root/loki-stack",
+      "compose_config_files": "/root/loki-stack/docker-compose.yml",
+      "networks": [
+        "loki-stack_default"
+      ]
+    },
+    {
+      "name": "3dp-frontend",
+      "image": "ghcr.io/denpiligrim/3dp-manager-client:main",
+      "image_id": "sha256:9607ca7c14fd7e8f1e98eeace1f89e55e1fb8966825c8d7f6db0af22d8bba711",
+      "image_created": "2026-06-08T20:36:40.26183518Z",
+      "image_digests": [
+        "ghcr.io/denpiligrim/3dp-manager-client@sha256:9607ca7c14fd7e8f1e98eeace1f89e55e1fb8966825c8d7f6db0af22d8bba711"
+      ],
+      "state": "running",
+      "restart_policy": {
+        "Name": "always",
+        "MaximumRetryCount": 0
+      },
+      "network_mode": "3dp-manager_app-network",
+      "ports": {
+        "443/tcp": [
+          {
+            "HostIp": "0.0.0.0",
+            "HostPort": "6659"
+          },
+          {
+            "HostIp": "::",
+            "HostPort": "6659"
+          }
+        ],
+        "80/tcp": null
+      },
+      "mounts": [
+        {
+          "type": "bind",
+          "source": "/etc/letsencrypt/live/servicevps.shamberservice.com/fullchain.pem",
+          "destination": "/etc/nginx/certs/fullchain.pem",
+          "read_write": false
+        },
+        {
+          "type": "bind",
+          "source": "/etc/letsencrypt/live/servicevps.shamberservice.com/privkey.pem",
+          "destination": "/etc/nginx/certs/privkey.pem",
+          "read_write": false
+        },
+        {
+          "type": "bind",
+          "source": "/opt/3dp-manager/client/nginx-client.conf",
+          "destination": "/etc/nginx/conf.d/default.conf",
+          "read_write": false
+        }
+      ],
+      "compose_project": "3dp-manager",
+      "compose_working_dir": "/opt/3dp-manager",
+      "compose_config_files": "/opt/3dp-manager/docker-compose.yml",
+      "networks": [
+        "3dp-manager_app-network"
+      ]
+    },
+    {
+      "name": "3dp-backend",
+      "image": "ghcr.io/denpiligrim/3dp-manager-server:main",
+      "image_id": "sha256:9aaa204b54b20ba4936aa3213e51c29c0f018decdf0af8da191247b632a2ac4c",
+      "image_created": "2026-06-08T20:36:05.972744044Z",
+      "image_digests": [
+        "ghcr.io/denpiligrim/3dp-manager-server@sha256:9aaa204b54b20ba4936aa3213e51c29c0f018decdf0af8da191247b632a2ac4c"
+      ],
+      "state": "running",
+      "restart_policy": {
+        "Name": "always",
+        "MaximumRetryCount": 0
+      },
+      "network_mode": "3dp-manager_app-network",
+      "ports": {
+        "3100/tcp": null
+      },
+      "mounts": [],
+      "compose_project": "3dp-manager",
+      "compose_working_dir": "/opt/3dp-manager",
+      "compose_config_files": "/opt/3dp-manager/docker-compose.yml",
+      "networks": [
+        "3dp-manager_app-network"
+      ]
+    },
+    {
+      "name": "3dp-postgres",
+      "image": "postgres:18-alpine",
+      "image_id": "sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873",
+      "image_created": "2026-09-17T21:29:50.207676277Z",
+      "image_digests": [
+        "postgres@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873"
+      ],
+      "state": "running",
+      "restart_policy": {
+        "Name": "always",
+        "MaximumRetryCount": 0
+      },
+      "network_mode": "3dp-manager_app-network",
+      "ports": {
+        "5432/tcp": null
+      },
+      "mounts": [
+        {
+          "type": "volume",
+          "source": "/var/lib/docker/volumes/3dp-manager_pg_data/_data",
+          "destination": "/var/lib/postgresql",
+          "read_write": true
+        }
+      ],
+      "compose_project": "3dp-manager",
+      "compose_working_dir": "/opt/3dp-manager",
+      "compose_config_files": "/opt/3dp-manager/docker-compose.yml",
+      "networks": [
+        "3dp-manager_app-network"
+      ]
+    },
+    {
+      "name": "3x-ui",
+      "image": "ghcr.io/mhsanaei/3x-ui:latest",
+      "image_id": "sha256:93a7a68e3d0a65be1b02d2bfc1f3ca02d0e800516a403e103cea2d7c7090855d",
+      "image_created": "2026-10-03T11:53:22.744752301Z",
+      "image_digests": [
+        "ghcr.io/mhsanaei/3x-ui@sha256:93a7a68e3d0a65be1b02d2bfc1f3ca02d0e800516a403e103cea2d7c7090855d"
+      ],
+      "state": "running",
+      "restart_policy": {
+        "Name": "always",
+        "MaximumRetryCount": 0
+      },
+      "network_mode": "bridge",
+      "ports": {
+        "2053/tcp": [
+          {
+            "HostIp": "0.0.0.0",
+            "HostPort": "2053"
+          },
+          {
+            "HostIp": "::",
+            "HostPort": "2053"
+          }
+        ]
+      },
+      "mounts": [
+        {
+          "type": "volume",
+          "source": "/var/lib/docker/volumes/331f2f30c8657820ccd3f1777aa2f3fbe3b77d5bfa0cdb3cdfea14a2cfa239fd/_data",
+          "destination": "/etc/x-ui",
+          "read_write": true
+        },
+        {
+          "type": "bind",
+          "source": "/root/3x-ui/db",
+          "destination": "/etc/xray",
+          "read_write": true
+        },
+        {
+          "type": "bind",
+          "source": "/root/3x-ui/cert",
+          "destination": "/root/cert",
+          "read_write": true
+        }
+      ],
+      "compose_project": null,
+      "compose_working_dir": null,
+      "compose_config_files": null,
+      "networks": [
+        "bridge"
+      ]
+    },
+    {
+      "name": "amnezia-awg2",
+      "image": "amnezia-awg2",
+      "image_id": "sha256:dbd6bd7f1c40b2fffbc2960f47e91d707c1d1cfbe0aaa258fb9d7150c23e2e06",
+      "image_created": "2026-10-10T10:23:36.415757732Z",
+      "image_digests": [
+        "amnezia-awg2@sha256:dbd6bd7f1c40b2fffbc2960f47e91d707c1d1cfbe0aaa258fb9d7150c23e2e06"
+      ],
+      "state": "running",
+      "restart_policy": {
+        "Name": "always",
+        "MaximumRetryCount": 0
+      },
+      "network_mode": "bridge",
+      "ports": {
+        "46872/udp": [
+          {
+            "HostIp": "0.0.0.0",
+            "HostPort": "46872"
+          },
+          {
+            "HostIp": "::",
+            "HostPort": "46872"
+          }
+        ]
+      },
+      "mounts": [
+        {
+          "type": "bind",
+          "source": "/lib/modules",
+          "destination": "/lib/modules",
+          "read_write": true
+        }
+      ],
+      "compose_project": null,
+      "compose_working_dir": null,
+      "compose_config_files": null,
+      "networks": [
+        "amnezia-dns-net",
+        "bridge"
+      ]
+    },
+    {
+      "name": "amnezia-telemt",
+      "image": "amnezia-telemt",
+      "image_id": "sha256:74d94fab9cd0962c7bf0ae07935bc8ea30262153b1060fd75ca099d53bd47869",
+      "image_created": "2026-10-10T10:09:06.476893604Z",
+      "image_digests": [
+        "amnezia-telemt@sha256:74d94fab9cd0962c7bf0ae07935bc8ea30262153b1060fd75ca099d53bd47869"
+      ],
+      "state": "running",
+      "restart_policy": {
+        "Name": "always",
+        "MaximumRetryCount": 0
+      },
+      "network_mode": "bridge",
+      "ports": {
+        "50553/tcp": [
+          {
+            "HostIp": "0.0.0.0",
+            "HostPort": "50553"
+          },
+          {
+            "HostIp": "::",
+            "HostPort": "50553"
+          }
+        ]
+      },
+      "mounts": [
+        {
+          "type": "volume",
+          "source": "/var/lib/docker/volumes/amnezia-telemt-data/_data",
+          "destination": "/data",
+          "read_write": true
+        }
+      ],
+      "compose_project": null,
+      "compose_working_dir": null,
+      "compose_config_files": null,
+      "networks": [
+        "bridge"
+      ]
+    },
+    {
+      "name": "amnezia-xray",
+      "image": "amnezia-xray",
+      "image_id": "sha256:4214c1e66167ea054b0f44137bc8631a476ff5d621b5ddd837276acbaebe068c",
+      "image_created": "2026-10-10T09:54:59.380049237Z",
+      "image_digests": [
+        "amnezia-xray@sha256:4214c1e66167ea054b0f44137bc8631a476ff5d621b5ddd837276acbaebe068c"
+      ],
+      "state": "running",
+      "restart_policy": {
+        "Name": "always",
+        "MaximumRetryCount": 0
+      },
+      "network_mode": "bridge",
+      "ports": {
+        "443/tcp": [
+          {
+            "HostIp": "0.0.0.0",
+            "HostPort": "443"
+          },
+          {
+            "HostIp": "::",
+            "HostPort": "443"
+          }
+        ],
+        "443/udp": [
+          {
+            "HostIp": "0.0.0.0",
+            "HostPort": "443"
+          },
+          {
+            "HostIp": "::",
+            "HostPort": "443"
+          }
+        ]
+      },
+      "mounts": [],
+      "compose_project": null,
+      "compose_working_dir": null,
+      "compose_config_files": null,
+      "networks": [
+        "amnezia-dns-net",
+        "bridge"
+      ]
+    }
+  ],
+  "checks": {
+    "os": {
+      "exit_code": 0,
+      "output": "PRETTY_NAME=\"Ubuntu 26.04.1 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"26.04\"\nVERSION=\"26.04.1 LTS (Resolute Raccoon)\"\nVERSION_CODENAME=resolute\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=resolute\nLOGO=ubuntu-logo"
+    },
+    "kernel": {
+      "exit_code": 0,
+      "output": "7.0.0-42-generic"
+    },
+    "uptime": {
+      "exit_code": 0,
+      "output": "08:56:19 up 13 days, 18:29,  3 users,  load average: 0.17, 0.16, 0.16"
+    },
+    "memory": {
+      "exit_code": 0,
+      "output": "total        used        free      shared  buff/cache   available\nMem:            1054         490         107           5         572         563\nSwap:           2047         356        1691"
+    },
+    "disk": {
+      "exit_code": 0,
+      "output": "Filesystem     Type     Size  Used Avail Use% Mounted on\ntmpfs          tmpfs    211M  1.6M  210M   1% /run\n/dev/sda2      ext4      20G   12G  7.1G  63% /\ntmpfs          tmpfs    528M     0  528M   0% /dev/shm\ntmpfs          tmpfs    528M     0  528M   0% /tmp\nnone           tmpfs    1.0M     0  1.0M   0% /run/credentials/getty@tty1.service\ntmpfs          tmpfs    106M  8.0K  106M   1% /run/user/0\noverlay        overlay   20G   12G  7.1G  63% /var/lib/docker/rootfs/overlayfs/d9ce76309fd7e77782f31203659b90b5dd4bdcc61df4aada668c5f9c6ff75a6d\noverlay        overlay   20G   12G  7.1G  63% /var/lib/docker/rootfs/overlayfs/bb2cf4ca556b8e91bd360416beb0c61314bcad9d868ccd573d8c50f0dfa4cebd\noverlay        overlay   20G   12G  7.1G  63% /var/lib/docker/rootfs/overlayfs/d6bc098cf9eb98284e45bd6883f2b391bb2212d1743f5dc62a45447b474ebe5c\noverlay        overlay   20G   12G  7.1G  63% /var/lib/docker/rootfs/overlayfs/ed7a082661c71506764fe757eb76309a63aeb8331e7a2199ef9e74b0db4f5342\noverlay        overlay   20G   12G  7.1G  63% /var/lib/docker/rootfs/overlayfs/b22d2e6dbf4484583478e397ee4b7e98e199e5a3c110767ed4c3836e3d6e19a8\noverlay        overlay   20G   12G  7.1G  63% /var/lib/docker/rootfs/overlayfs/55a6ab1afa9c9856754daa623258e063e2e2419013b0eb5e26b97e3b2a39e5ff\noverlay        overlay   20G   12G  7.1G  63% /var/lib/docker/rootfs/overlayfs/f8b71d986f1f9c701f56edc4dce0de84bc6930fb989515167bc4c01f23ca5f05\nnone           tmpfs    1.0M     0  1.0M   0% /run/credentials/systemd-journald.service\nnone           tmpfs    1.0M     0  1.0M   0% /run/credentials/systemd-resolved.service\nnone           tmpfs    1.0M     0  1.0M   0% /run/credentials/systemd-networkd.service"
+    },
+    "docker_version": {
+      "exit_code": 0,
+      "output": "29.1.3"
+    },
+    "docker_disk": {
+      "exit_code": 0,
+      "output": "TYPE            TOTAL     ACTIVE    SIZE      RECLAIMABLE\nImages          10        10        4.919GB   4.919GB (100%)\nContainers      10        7         579.1MB   575MB (99%)\nLocal Volumes   3         3         80.3MB    0B (0%)\nBuild Cache     0         0         0B        0B"
+    },
+    "docker_networks": {
+      "exit_code": 0,
+      "output": "3dp-manager_app-network | bridge\namnezia-dns-net | bridge\nbridge | bridge\nhost | host\nloki-stack_default | bridge\nnetdata_default | bridge\nnone | null"
+    },
+    "docker_volumes": {
+      "exit_code": 0,
+      "output": "3dp-manager_pg_data\n331f2f30c8657820ccd3f1777aa2f3fbe3b77d5bfa0cdb3cdfea14a2cfa239fd\namnezia-telemt-data"
+    },
+    "docker_images": {
+      "exit_code": 0,
+      "output": "grafana/grafana:latest | 488984b716c0 | 2.01GB\ngrafana/loki:latest | 0db216b630ae | 211MB\namnezia-awg2:latest | dbd6bd7f1c40 | 41.9MB\namnezia-telemt:latest | 74d94fab9cd0 | 185MB\namnezia-xray:latest | 4214c1e66167 | 149MB\nghcr.io/mhsanaei/3x-ui:latest | 93a7a68e3d0a | 462MB\npostgres:18-alpine | 77f585114c32 | 433MB\nghcr.io/denpiligrim/3dp-manager-client:main | 9607ca7c14fd | 101MB\nghcr.io/denpiligrim/3dp-manager-server:main | 9aaa204b54b2 | 494MB\ngrafana/promtail:latest | 6cfa64ec432b | 283MB"
+    },
+    "installed_packages": {
+      "exit_code": 0,
+      "output": "3cpio\t0.14.0-1ubuntu1\tinstalled\nadduser\t3.153ubuntu1\tinstalled\namd64-microcode\t3.20251202.1ubuntu2\tinstalled\napparmor\t5.0.2-0ubuntu1~26.04.1\tinstalled\napport\t2.34.1-0ubuntu0.1\tinstalled\napport-core-dump-handler\t2.34.1-0ubuntu0.1\tinstalled\napport-symptoms\t0.25build1\tinstalled\nappstream\t1.1.2-1\tinstalled\napt\t3.2.1ubuntu0.1\tinstalled\nbase-files\t14ubuntu6.2\tinstalled\nbase-passwd\t3.6.8\tinstalled\nbash\t5.3-2ubuntu1\tinstalled\nbash-completion\t1:2.16.0-8build1\tinstalled\nbc\t1.07.1-4build1\tinstalled\nbcache-tools\t1.0.8-5ubuntu1\tinstalled\nbind9-dnsutils\t1:9.20.24-1ubuntu0.5\tinstalled\nbind9-host\t1:9.20.24-1ubuntu0.5\tinstalled\nbind9-libs:amd64\t1:9.20.24-1ubuntu0.5\tinstalled\nbinutils\t2.46-3ubuntu2\tinstalled\nbinutils-common:amd64\t2.46-3ubuntu2\tinstalled\nbinutils-x86-64-linux-gnu\t2.46-3ubuntu2\tinstalled\nbolt\t0.9.10-1\tinstalled\nbpfcc-tools\t0.35.0+ds-1ubuntu2\tinstalled\nbpftool\t7.7.0+7.0.0-43.43\tinstalled\nbpftrace\t0.25.0-1ubuntu1\tinstalled\nbridge-utils\t1.7.1-4ubuntu3\tinstalled\nbsdextrautils\t2.41.3-3ubuntu2.2\tinstalled\nbsdutils\t1:2.41.3-3ubuntu2.2\tinstalled\nbtrfs-progs\t6.17.1-1build1\tinstalled\nbusybox-initramfs\t1:1.37.0-7ubuntu1\tinstalled\nbusybox-static\t1:1.37.0-7ubuntu1\tinstalled\nca-certificates\t20260816ubuntu0.26.04.2\tinstalled\ncertbot\t4.0.0-4\tinstalled\nchrony\t4.8-2ubuntu1\tinstalled\ncommand-not-found\t23.04.0build1\tinstalled\nconntrack\t1:1.4.9-1\tinstalled\nconsole-setup\t1.237ubuntu3.1\tinstalled\nconsole-setup-linux\t1.237ubuntu3.1\tinstalled\ncontainerd\t2.2.2-0ubuntu1.1\tinstalled\ncoreutils\t9.5-1ubuntu2+0.0.0~ubuntu25\tinstalled\ncoreutils-from-uutils\t0.0.0~ubuntu25\tinstalled\ncpio\t2.15+dfsg-2.1ubuntu0.1\tinstalled\ncrash\t9.0.1+~16.3-1ubuntu1\tinstalled\ncron\t3.0pl1-200ubuntu1\tinstalled\ncron-daemon-common\t3.0pl1-200ubuntu1\tinstalled\ncryptsetup\t2:2.8.4-1ubuntu4\tinstalled\ncryptsetup-bin\t2:2.8.4-1ubuntu4\tinstalled\ncurl\t8.18.0-1ubuntu2.8\tinstalled\ndash\t0.5.12-12ubuntu3\tinstalled\ndbus\t1.16.2-2ubuntu4\tinstalled\ndbus-bin\t1.16.2-2ubuntu4\tinstalled\ndbus-daemon\t1.16.2-2ubuntu4\tinstalled\ndbus-session-bus-common\t1.16.2-2ubuntu4\tinstalled\ndbus-system-bus-common\t1.16.2-2ubuntu4\tinstalled\ndbus-user-session\t1.16.2-2ubuntu4\tinstalled\ndebconf\t1.5.92\tinstalled\ndebconf-i18n\t1.5.92\tinstalled\ndebianutils\t5.23.2build1\tinstalled\ndhcpcd-base\t1:10.3.0-7\tinstalled\ndiffutils\t1:3.12-1ubuntu0.1\tinstalled\ndirmngr\t2.4.8-4ubuntu3.1\tinstalled\ndistro-info\t1.15\tinstalled\ndistro-info-data\t2026.10.12-0ubuntu0.26.04.1\tinstalled\ndmeventd\t2:1.02.205-2ubuntu3\tinstalled\ndmidecode\t3.6-2ubuntu1\tinstalled\ndmsetup\t2:1.02.205-2ubuntu3\tinstalled\ndns-root-data\t2025080400build1\tinstalled\ndnsmasq-base\t2.92-1ubuntu0.5\tinstalled\ndocker-compose-v2\t2.40.3+ds1-0ubuntu1\tinstalled\ndocker.io\t29.1.3-0ubuntu4.1\tinstalled\ndosfstools\t4.2-1.2build1\tinstalled\ndpkg\t1.23.7ubuntu1\tinstalled\ndracut\t110-11ubuntu0.1\tinstalled\ndracut-core\t110-11ubuntu0.1\tinstalled\ndracut-install\t110-11ubuntu0.1\tinstalled\ndracut-network\t110-11ubuntu0.1\tinstalled\ne2fsprogs\t1.47.2-3ubuntu4\tinstalled\ned\t1.22.4-1\tinstalled\neject\t2.41.3-3ubuntu2.2\tinstalled\nethtool\t1:6.19-1\tinstalled\nexfatprogs\t1.3.2-1\tinstalled\nfail2ban\t1.1.0-9\tinstalled\nfdisk\t2.41.3-3ubuntu2.2\tinstalled\nfile\t1:5.46-5build2\tinstalled\nfinalrd\t9build2\tinstalled\nfindutils\t4.10.0-3build2\tinstalled\nfirmware-sof-signed\t2025.12.2-1\tinstalled\nfonts-ubuntu-console\t0.869+git20240321-0ubuntu2\tinstalled\nfriendly-recovery\t0.2.42build1\tinstalled\nftp\t20260211-1\tinstalled\nfuse3\t3.18.2-1\tinstalled\nfwupd\t2.1.1-1ubuntu3.1\tinstalled\nfwupd-signed\t1.55+1.7-1\tinstalled\ngawk\t1:5.3.2-1ubuntu1.1\tinstalled\ngcc-16-base:amd64\t16-20260322-1ubuntu1\tinstalled\ngdisk\t1.0.10-2build1\tinstalled\ngettext-base\t0.23.2-1\tinstalled\ngir1.2-girepository-3.0:amd64\t2.88.0-1ubuntu0.1\tinstalled\ngir1.2-glib-2.0:amd64\t2.88.0-1ubuntu0.1\tinstalled\ngir1.2-packagekitglib-1.0\t1.3.4-3ubuntu1.2\tinstalled\ngit\t1:2.53.0-1ubuntu1.1\tinstalled\ngit-man\t1:2.53.0-1ubuntu1.1\tinstalled\ngnu-coreutils\t9.7-3ubuntu2.1\tinstalled\ngnupg\t2.4.8-4ubuntu3.1\tinstalled\ngnupg-l10n\t2.4.8-4ubuntu3.1\tinstalled\ngnupg-utils\t2.4.8-4ubuntu3.1\tinstalled\ngpg\t2.4.8-4ubuntu3.1\tinstalled\ngpg-agent\t2.4.8-4ubuntu3.1\tinstalled\ngpg-wks-client\t2.4.8-4ubuntu3.1\tinstalled\ngpgconf\t2.4.8-4ubuntu3.1\tinstalled\ngpgsm\t2.4.8-4ubuntu3.1\tinstalled\ngpgv\t2.4.8-4ubuntu3.1\tinstalled\ngrep\t3.12-1\tinstalled\ngroff-base\t1.23.0-10\tinstalled\ngrub-gfxpayload-lists\t0.7build3\tinstalled\ngrub-pc\t2.14-2ubuntu2.1\tinstalled\ngrub-pc-bin\t2.14-2ubuntu2.1\tinstalled\ngrub2-common\t2.14-2ubuntu2.1\tinstalled\ngzip\t1.14-1~exp2ubuntu1.1\tinstalled\nhdparm\t9.65+ds-1.1build1\tinstalled\nhostname\t3.25build1\tinstalled\nhtop\t3.4.1-5build2\tinstalled\nhwctl\t0.11.0-0ubuntu1\tinstalled\nhwdata\t0.394-1build1\tinstalled\nibverbs-providers:amd64\t61.0-2ubuntu3\tinstalled\nieee-data\t20240722build1\tinstalled\ninetutils-telnet\t2:2.7-2ubuntu1.1\tinstalled\ninfo\t7.2-5ubuntu2\tinstalled\ninit\t1.69\tinstalled\ninit-system-helpers\t1.69\tinstalled\ninitramfs-tools-bin\t0.151ubuntu1\tinstalled\ninitramfs-tools-core\t0.151ubuntu1\tinstalled\ninstall-info\t7.2-5ubuntu2\tinstalled\nintel-microcode\t3.20260210.1ubuntu2\tinstalled\niproute2\t6.19.0-1ubuntu1.1\tinstalled\niptables\t1.8.11-2ubuntu3\tinstalled\niputils-ping\t3:20250605-1ubuntu1\tinstalled\niputils-tracepath\t3:20250605-1ubuntu1\tinstalled\niso-codes\t4.20.1-1\tinstalled\niucode-tool\t2.3.1-3build2\tinstalled\njq\t1.8.1-4ubuntu2\tinstalled\nkbd\t2.7.1-2ubuntu2\tinstalled\nkdump-tools\t1:1.10.7ubuntu3\tinstalled\nkexec-tools\t1:2.0.32-3ubuntu1\tinstalled\nkeyboard-configuration\t1.237ubuntu3.1\tinstalled\nklibc-utils\t2.0.14-1ubuntu2\tinstalled\nkmod\t34.2-2ubuntu2\tinstalled\nkpartx\t0.14.3-2ubuntu1\tinstalled\nkrb5-locales\t1.22.1-2ubuntu4.1\tinstalled\nlandscape-common\t26.02.2-0ubuntu1\tinstalled\nless\t668-1build1\tinstalled\nlibacl1:amd64\t2.3.2-2\tinstalled\nlibaio1t64:amd64\t0.3.113-8build1\tinstalled\nlibapparmor1:amd64\t5.0.2-0ubuntu1~26.04.1\tinstalled\nlibappstream5:amd64\t1.1.2-1\tinstalled\nlibapt-pkg7.0:amd64\t3.2.1ubuntu0.1\tinstalled\nlibassuan9:amd64\t3.0.2-2build1\tinstalled\nlibatasmart4:amd64\t0.19-6\tinstalled\nlibatomic1:amd64\t16-20260322-1ubuntu1\tinstalled\nlibattr1:amd64\t1:2.5.2-4ubuntu0.1\tinstalled\nlibaudit-common\t1:4.1.2-1ubuntu0.1\tinstalled\nlibaudit1:amd64\t1:4.1.2-1ubuntu0.1\tinstalled\nlibbinutils:amd64\t2.46-3ubuntu2\tinstalled\nlibblkid1:amd64\t2.41.3-3ubuntu2.2\tinstalled\nlibblockdev-crypto3:amd64\t3.4.0-1\tinstalled\nlibblockdev-fs3:amd64\t3.4.0-1\tinstalled\nlibblockdev-loop3:amd64\t3.4.0-1\tinstalled\nlibblockdev-mdraid3:amd64\t3.4.0-1\tinstalled\nlibblockdev-nvme3:amd64\t3.4.0-1\tinstalled\nlibblockdev-part3:amd64\t3.4.0-1\tinstalled\nlibblockdev-smart3:amd64\t3.4.0-1\tinstalled\nlibblockdev-swap3:amd64\t3.4.0-1\tinstalled\nlibblockdev-utils3:amd64\t3.4.0-1\tinstalled\nlibblockdev3:amd64\t3.4.0-1\tinstalled\nlibbpf1:amd64\t1:1.6.3-1ubuntu1\tinstalled\nlibbpfcc:amd64\t0.35.0+ds-1ubuntu2\tinstalled\nlibbrotli1:amd64\t1.2.0-3ubuntu0.1\tinstalled\nlibbsd0:amd64\t0.12.2-2build2\tinstalled\nlibbytesize-common\t2.12-1\tinstalled\nlibbytesize1:amd64\t2.12-1\tinstalled\nlibbz2-1.0:amd64\t1.0.8-6ubuntu0.1\tinstalled\nlibc-bin\t2.43-2ubuntu2.7\tinstalled\nlibc-dev-bin\t2.43-2ubuntu2.7\tinstalled\nlibc-gconv-modules-extra:amd64\t2.43-2ubuntu2.7\tinstalled\nlibc6:amd64\t2.43-2ubuntu2.7\tinstalled\nlibc6-dev:amd64\t2.43-2ubuntu2.7\tinstalled\nlibcap-ng0:amd64\t0.8.5-4build5\tinstalled\nlibcap2:amd64\t1:2.75-10ubuntu2\tinstalled\nlibcap2-bin\t1:2.75-10ubuntu2\tinstalled\nlibcbor0.10:amd64\t0.10.2-2ubuntu3\tinstalled\nlibclang-cpp21\t1:21.1.8-6ubuntu1\tinstalled\nlibclang1-21\t1:21.1.8-6ubuntu1\tinstalled\nlibcom-err2:amd64\t1.47.2-3ubuntu4\tinstalled\nlibcrypt1:amd64\t1:4.5.1-1\tinstalled\nlibcryptsetup12:amd64\t2:2.8.4-1ubuntu4\tinstalled\nlibctf-nobfd0:amd64\t2.46-3ubuntu2\tinstalled\nlibctf0:amd64\t2.46-3ubuntu2\tinstalled\nlibcurl3t64-gnutls:amd64\t8.18.0-1ubuntu2.8\tinstalled\nlibcurl4t64:amd64\t8.18.0-1ubuntu2.8\tinstalled\nlibdb5.3t64:amd64\t5.3.28+dfsg2-10ubuntu1\tinstalled\nlibdbus-1-3:amd64\t1.16.2-2ubuntu4\tinstalled\nlibdebconfclient0:amd64\t0.280ubuntu1\tinstalled\nlibdebuginfod-common\t0.194-4\tinstalled\nlibdebuginfod1t64:amd64\t0.194-4\tinstalled\nlibdevmapper-event1.02.1:amd64\t2:1.02.205-2ubuntu3\tinstalled\nlibdevmapper1.02.1:amd64\t2:1.02.205-2ubuntu3\tinstalled\nlibdrm-amdgpu1:amd64\t2.4.131-1\tinstalled\nlibdrm-common\t2.4.131-1\tinstalled\nlibdrm2:amd64\t2.4.131-1\tinstalled\nlibduktape207:amd64\t2.7.0+tests-0ubuntu4\tinstalled\nlibdw1t64:amd64\t0.194-4\tinstalled\nlibedit2:amd64\t3.1-20251016-1\tinstalled\nlibefiboot1t64:amd64\t39-2\tinstalled\nlibefivar1t64:amd64\t39-2\tinstalled\nlibelf1t64:amd64\t0.194-4\tinstalled\nliberror-perl\t0.17030-1\tinstalled\nlibestr0:amd64\t0.1.11-2build1\tinstalled\nlibevdev2:amd64\t1.13.6+dfsg-1\tinstalled\nlibevent-core-2.1-7t64:amd64\t2.1.12-stable-10ubuntu0.2\tinstalled\nlibexpat1:amd64\t2.7.4-1ubuntu0.2\tinstalled\nlibext2fs2t64:amd64\t1.47.2-3ubuntu4\tinstalled\nlibfastjson4:amd64\t1.2304.0-2build1\tinstalled\nlibfdisk1:amd64\t2.41.3-3ubuntu2.2\tinstalled\nlibffi8:amd64\t3.5.2-4\tinstalled\nlibfido2-1:amd64\t1.16.0-2build1\tinstalled\nlibflashrom1:amd64\t1.6.0-2ubuntu1.1\tinstalled\nlibfreetype6:amd64\t2.14.2+dfsg-1ubuntu0.2\tinstalled\nlibfribidi0:amd64\t1.0.16-5\tinstalled\nlibftdi1-2:amd64\t1.6~rc1-1build1\tinstalled\nlibfuse3-4:amd64\t3.18.2-1\tinstalled\nlibfwupd3:amd64\t2.1.1-1ubuntu3.1\tinstalled\nlibfyaml0:amd64\t0.9.4-1\tinstalled\nlibgcc-s1:amd64\t16-20260322-1ubuntu1\tinstalled\nlibgcrypt20:amd64\t1.12.0-2ubuntu1.1\tinstalled\nlibgdbm-compat4t64:amd64\t1.26-1build1\tinstalled\nlibgdbm6t64:amd64\t1.26-1build1\tinstalled\nlibgirepository-2.0-0:amd64\t2.88.0-1ubuntu0.1\tinstalled\nlibglib2.0-0t64:amd64\t2.88.0-1ubuntu0.1\tinstalled\nlibglib2.0-bin\t2.88.0-1ubuntu0.1\tinstalled\nlibglib2.0-data\t2.88.0-1ubuntu0.1\tinstalled\nlibgmp10:amd64\t2:6.3.0+dfsg-5ubuntu2\tinstalled\nlibgnutls30t64:amd64\t3.8.12-2ubuntu1.1\tinstalled\nlibgpg-error-l10n\t1.58-2\tinstalled\nlibgpg-error0:amd64\t1.58-2\tinstalled\nlibgpgme45:amd64\t2.0.1-2build1\tinstalled\nlibgpm2:amd64\t1.20.7-12build1\tinstalled\nlibgprofng0:amd64\t2.46-3ubuntu2\tinstalled\nlibgssapi-krb5-2:amd64\t1.22.1-2ubuntu4.1\tinstalled\nlibgstreamer1.0-0:amd64\t1.28.2-1ubuntu0.1\tinstalled\nlibgudev-1.0-0:amd64\t1:238-7build1\tinstalled\nlibhogweed6t64:amd64\t3.10.2-1\tinstalled\nlibibverbs1:amd64\t61.0-2ubuntu3\tinstalled\nlibicu78:amd64\t78.2-2ubuntu1\tinstalled\nlibidn2-0:amd64\t2.3.8-4build1\tinstalled\nlibimobiledevice-1.0-6:amd64\t1.4.0-1build1\tinstalled\nlibimobiledevice-glue-1.0-0\t1.3.2-2build1\tinstalled\nlibinih1:amd64\t61-1ubuntu1\tinstalled\nlibintl-perl\t1.37-1\tinstalled\nlibintl-xs-perl\t1.37-1\tinstalled\nlibip4tc2:amd64\t1.8.11-2ubuntu3\tinstalled\nlibip6tc2:amd64\t1.8.11-2ubuntu3\tinstalled\nlibisns0t64:amd64\t0.101-2.1ubuntu0.1\tinstalled\nlibjansson4:amd64\t2.14-2build4\tinstalled\nlibjcat1:amd64\t0.2.5-1build1\tinstalled\nlibjemalloc2:amd64\t5.3.0-4\tinstalled\nlibjq1:amd64\t1.8.1-4ubuntu2\tinstalled\nlibjson-c5:amd64\t0.18+ds-3\tinstalled\nlibjson-glib-1.0-0:amd64\t1.10.8+ds-2\tinstalled\nlibjson-glib-1.0-common\t1.10.8+ds-2\tinstalled\nlibk5crypto3:amd64\t1.22.1-2ubuntu4.1\tinstalled\nlibkeyutils1:amd64\t1.6.3-6ubuntu3\tinstalled\nlibklibc:amd64\t2.0.14-1ubuntu2\tinstalled\nlibkmod2:amd64\t34.2-2ubuntu2\tinstalled\nlibkrb5-3:amd64\t1.22.1-2ubuntu4.1\tinstalled\nlibkrb5support0:amd64\t1.22.1-2ubuntu4.1\tinstalled\nlibksba8:amd64\t1.6.7-2build1\tinstalled\nliblastlog2-2:amd64\t2.41.3-3ubuntu2.2\tinstalled\nlibldap-common\t2.6.10+dfsg-1ubuntu5\tinstalled\nlibldap2:amd64\t2.6.10+dfsg-1ubuntu5\tinstalled\nlibllvm21:amd64\t1:21.1.8-6ubuntu1\tinstalled\nliblmdb0:amd64\t0.9.31-1build2\tinstalled\nliblocale-gettext-perl\t1.07-8\tinstalled\nliblsof0\t4.99.4+dfsg-2build2\tinstalled\nliblvm2cmd2.03:amd64\t2.03.31-2ubuntu3\tinstalled\nliblz4-1:amd64\t1.10.0-8\tinstalled\nliblzma5:amd64\t5.8.3-1ubuntu0.1\tinstalled\nliblzo2-2:amd64\t2.10-3build2\tinstalled\nlibmagic-mgc\t1:5.46-5build2\tinstalled\nlibmagic1t64:amd64\t1:5.46-5build2\tinstalled\nlibmaxminddb0:amd64\t1.12.2-1build2\tinstalled\nlibmbim-glib4:amd64\t1.32.0-2ubuntu1\tinstalled\nlibmbim-proxy\t1.32.0-2ubuntu1\tinstalled\nlibmbim-utils\t1.32.0-2ubuntu1\tinstalled\nlibmd0:amd64\t1.1.0-2build4\tinstalled\nlibmm-glib0:amd64\t1.25.95-1ubuntu1\tinstalled\nlibmnl0:amd64\t1.0.5-3build1\tinstalled\nlibmodule-find-perl\t0.17-1\tinstalled\nlibmount1:amd64\t2.41.3-3ubuntu2.2\tinstalled\nlibmpathcmd0\t0.14.3-2ubuntu1\tinstalled\nlibmpathpersist0\t0.14.3-2ubuntu1\tinstalled\nlibmpfr6:amd64\t4.2.2-3\tinstalled\nlibmspack0t64:amd64\t0.11-1.1ubuntu0.26.04.1\tinstalled\nlibmultipath0\t0.14.3-2ubuntu1\tinstalled\nlibncurses6:amd64\t6.6+20251231-1\tinstalled\nlibncursesw6:amd64\t6.6+20251231-1\tinstalled\nlibnetfilter-conntrack3:amd64\t1.1.1-1\tinstalled\nlibnetplan1:amd64\t1.2-1ubuntu5.1\tinstalled\nlibnettle8t64:amd64\t3.10.2-1\tinstalled\nlibnewt0.52:amd64\t0.52.25-1ubuntu3\tinstalled\nlibnfnetlink0:amd64\t1.0.2-3build1\tinstalled\nlibnftables1:amd64\t1.1.6-1\tinstalled\nlibnftnl11:amd64\t1.3.1-1\tinstalled\nlibnghttp2-14:amd64\t1.68.0-2ubuntu0.2\tinstalled\nlibnl-3-200:amd64\t3.12.0-2\tinstalled\nlibnl-genl-3-200:amd64\t3.12.0-2\tinstalled\nlibnl-route-3-200:amd64\t3.12.0-2\tinstalled\nlibnpth0t64:amd64\t1.8-3build1\tinstalled\nlibnspr4:amd64\t2:4.38.2-1ubuntu1\tinstalled\nlibnss-systemd:amd64\t259.5-0ubuntu3.4\tinstalled\nlibnss3:amd64\t2:3.120-1ubuntu2.2\tinstalled\nlibntfs-3g89t64:amd64\t1:2022.10.3-5ubuntu1.1\tinstalled\nlibnuma1:amd64\t2.0.19-1build1\tinstalled\nlibnvme1t64:amd64\t1.16.1-4\tinstalled\nlibonig5:amd64\t6.9.10-1build1\tinstalled\nlibopeniscsiusr\t2.1.11-3ubuntu3\tinstalled\nlibp11-kit0:amd64\t0.26.2-2\tinstalled\nlibpackagekit-glib2-18:amd64\t1.3.4-3ubuntu1.2\tinstalled\nlibpam-cap:amd64\t1:2.75-10ubuntu2\tinstalled\nlibpam-modules:amd64\t1.7.0-5ubuntu3.2\tinstalled\nlibpam-modules-bin\t1.7.0-5ubuntu3.2\tinstalled\nlibpam-runtime\t1.7.0-5ubuntu3.2\tinstalled\nlibpam-systemd:amd64\t259.5-0ubuntu3.4\tinstalled\nlibpam0g:amd64\t1.7.0-5ubuntu3.2\tinstalled\nlibparted2t64:amd64\t3.6-6\tinstalled\nlibpcap0.8t64:amd64\t1.10.6-1ubuntu1.1\tinstalled\nlibpci3:amd64\t1:3.14.0-1build2\tinstalled\nlibpcre2-8-0:amd64\t10.46-1ubuntu0.1\tinstalled\nlibperl5.40:amd64\t5.40.1-7ubuntu0.4\tinstalled\nlibpipeline1:amd64\t1.5.8-2\tinstalled\nlibplist-2.0-4:amd64\t2.7.0+git20250820-1build1\tinstalled\nlibplymouth5:amd64\t24.004.60+git20250831.4a3c171d-0ubuntu8\tinstalled\nlibpng16-16t64:amd64\t1.6.57-1ubuntu0.1\tinstalled\nlibpolkit-agent-1-0:amd64\t127-2ubuntu1.1\tinstalled\nlibpolkit-gobject-1-0:amd64\t127-2ubuntu1.1\tinstalled\nlibpopt0:amd64\t1.19+dfsg-2build1\tinstalled\nlibproc-processtable-perl:amd64\t0.637-1\tinstalled\nlibproc2-0:amd64\t2:4.0.4-9ubuntu1\tinstalled\nlibpsl5t64:amd64\t0.21.2-1.1build2\tinstalled\nlibpython3-stdlib:amd64\t3.14.3-0ubuntu2\tinstalled\nlibpython3.14:amd64\t3.14.4-1ubuntu0.2\tinstalled\nlibpython3.14-minimal:amd64\t3.14.4-1ubuntu0.2\tinstalled\nlibpython3.14-stdlib:amd64\t3.14.4-1ubuntu0.2\tinstalled\nlibqmi-glib5:amd64\t1.38.0-1\tinstalled\nlibqmi-proxy\t1.38.0-1\tinstalled\nlibqmi-utils\t1.38.0-1\tinstalled\nlibqrtr-glib0:amd64\t1.2.2-2ubuntu1\tinstalled\nlibreadline8t64:amd64\t8.3-4\tinstalled\nlibrtmp1:amd64\t2.4+20151223.gitfa8646d.1-3\tinstalled\nlibsasl2-2:amd64\t2.1.28+dfsg1-9ubuntu3\tinstalled\nlibsasl2-modules:amd64\t2.1.28+dfsg1-9ubuntu3\tinstalled\nlibsasl2-modules-db:amd64\t2.1.28+dfsg1-9ubuntu3\tinstalled\nlibseccomp2:amd64\t2.6.0-2ubuntu5\tinstalled\nlibselinux1:amd64\t3.9-4build1\tinstalled\nlibsemanage-common\t3.9-1build1\tinstalled\nlibsemanage2:amd64\t3.9-1build1\tinstalled\nlibsensors-config\t1:3.6.2-2build1\tinstalled\nlibsensors5:amd64\t1:3.6.2-2build1\tinstalled\nlibsepol2:amd64\t3.9-2\tinstalled\nlibsframe3:amd64\t2.46-3ubuntu2\tinstalled\nlibsgutils2-1.48:amd64\t1.48-3ubuntu3.2\tinstalled\nlibslang2:amd64\t2.3.3-5build1\tinstalled\nlibsmartcols1:amd64\t2.41.3-3ubuntu2.2\tinstalled\nlibsnappy1v5:amd64\t1.2.2-2\tinstalled\nlibsodium23:amd64\t1.0.18-2\tinstalled\nlibsort-naturally-perl\t1.03-4\tinstalled\nlibsqlite3-0:amd64\t3.46.1-9ubuntu0.3\tinstalled\nlibss2:amd64\t1.47.2-3ubuntu4\tinstalled\nlibssh2-1t64:amd64\t1.11.1-1ubuntu0.26.04.4\tinstalled\nlibssl3t64:amd64\t3.5.5-1ubuntu3.7\tinstalled\nlibstdc++6:amd64\t16-20260322-1ubuntu1\tinstalled\nlibstemmer0d:amd64\t3.0.1-1\tinstalled\nlibsystemd-shared:amd64\t259.5-0ubuntu3.4\tinstalled\nlibsystemd0:amd64\t259.5-0ubuntu3.4\tinstalled\nlibtasn1-6:amd64\t4.21.0-2\tinstalled\nlibtcl8.6:amd64\t8.6.17+dfsg-1build1\tinstalled\nlibterm-readkey-perl\t2.38-2build5\tinstalled\nlibtext-charwidth-perl:amd64\t0.04-11build4\tinstalled\nlibtext-iconv-perl:amd64\t1.7-8.1\tinstalled\nlibtext-wrapi18n-perl\t0.06-10\tinstalled\nlibtinfo6:amd64\t6.6+20251231-1\tinstalled\nlibtirpc-common\t1.3.7-0.1\tinstalled\nlibtirpc3t64:amd64\t1.3.7-0.1\tinstalled\nlibtraceevent1:amd64\t1:1.8.7-1\tinstalled\nlibtraceevent1-plugin:amd64\t1:1.8.7-1\tinstalled\nlibtracefs1:amd64\t1.8.2-1ubuntu1\tinstalled\nlibtss2-esys-3.0.2-0t64:amd64\t4.1.3-6\tinstalled\nlibtss2-mu-4.0.1-0t64:amd64\t4.1.3-6\tinstalled\nlibtss2-sys1t64:amd64\t4.1.3-6\tinstalled\nlibtss2-tcti-cmd0t64:amd64\t4.1.3-6\tinstalled\nlibtss2-tcti-device0t64:amd64\t4.1.3-6\tinstalled\nlibtss2-tcti-mssim0t64:amd64\t4.1.3-6\tinstalled\nlibtss2-tcti-swtpm0t64:amd64\t4.1.3-6\tinstalled\nlibuchardet0:amd64\t0.0.8-2\tinstalled\nlibudev1:amd64\t259.5-0ubuntu3.4\tinstalled\nlibudisks2-0:amd64\t2.10.91-1ubuntu2.1\tinstalled\nlibunistring5:amd64\t1.3-2build1\tinstalled\nlibunwind8:amd64\t1.8.3-0ubuntu1\tinstalled\nlibupower-glib3:amd64\t1.91.1-1\tinstalled\nliburcu8t64:amd64\t0.15.6-1\tinstalled\nlibusb-1.0-0:amd64\t2:1.0.29-2build1\tinstalled\nlibusbmuxd-2.0-7:amd64\t2.1.1-1\tinstalled\nlibuuid1:amd64\t2.41.3-3ubuntu2.2\tinstalled\nlibuv1t64:amd64\t1.51.0-2ubuntu1\tinstalled\nlibvolume-key1:amd64\t0.3.12-10build2\tinstalled\nlibwrap0:amd64\t7.6.q-36build2\tinstalled\nlibx11-6:amd64\t2:1.8.13-1ubuntu0.1\tinstalled\nlibx11-data\t2:1.8.13-1ubuntu0.1\tinstalled\nlibxau6:amd64\t1:1.0.11-1build2\tinstalled\nlibxcb1:amd64\t1.17.0-2ubuntu1\tinstalled\nlibxdmcp6:amd64\t1:1.1.5-2\tinstalled\nlibxext6:amd64\t2:1.3.4-1build3\tinstalled\nlibxkbcommon0:amd64\t1.13.1-1\tinstalled\nlibxml2-16:amd64\t2.15.2+dfsg-0.1ubuntu0.3\tinstalled\nlibxmlb2:amd64\t0.3.24-2\tinstalled\nlibxmlsec1-1:amd64\t1.3.9-1\tinstalled\nlibxmlsec1-openssl1:amd64\t1.3.9-1\tinstalled\nlibxmuu1:amd64\t2:1.1.3-4\tinstalled\nlibxslt1.1:amd64\t1.1.45-0.1\tinstalled\nlibxtables12:amd64\t1.8.11-2ubuntu3\tinstalled\nlibxxhash0:amd64\t0.8.3-2build1\tinstalled\nlibyaml-0-2:amd64\t0.2.5-2build3\tinstalled\nlibzstd1:amd64\t1.5.7+dfsg-3\tinstalled\nlinux-base\t4.15ubuntu5\tinstalled\nlinux-firmware\t20260319.git217ca6e4.1ubuntu\tinstalled\nlinux-firmware-amd-graphics\t20260319.git217ca6e4-0ubuntu3.1\tinstalled\nlinux-firmware-amd-misc\t20260319.git217ca6e4-0ubuntu1.1\tinstalled\nlinux-firmware-broadcom-wireless\t20260319.git217ca6e4-0ubuntu1.1\tinstalled\nlinux-firmware-intel-graphics\t20260319.git217ca6e4-0ubuntu2.1\tinstalled\nlinux-firmware-intel-misc\t20260319.git217ca6e4-0ubuntu1.2\tinstalled\nlinux-firmware-intel-wireless\t20260319.git217ca6e4-0ubuntu2.1\tinstalled\nlinux-firmware-marvell-prestera\t20260319.git217ca6e4-0ubuntu1.2\tinstalled\nlinux-firmware-marvell-wireless\t20260319.git217ca6e4-0ubuntu1.1\tinstalled\nlinux-firmware-mediatek\t20260319.git217ca6e4-0ubuntu1.2\tinstalled\nlinux-firmware-mellanox-spectrum\t20260319.git217ca6e4-0ubuntu1.1\tinstalled\nlinux-firmware-misc\t20260319.git217ca6e4-0ubuntu2.2\tinstalled\nlinux-firmware-netronome\t20260319.git217ca6e4-0ubuntu1.1\tinstalled\nlinux-firmware-nvidia-graphics\t20260319.git217ca6e4-0ubuntu1.1\tinstalled\nlinux-firmware-qlogic\t20260319.git217ca6e4-0ubuntu1.1\tinstalled\nlinux-firmware-qualcomm-graphics\t20260319.git217ca6e4-0ubuntu1.1\tinstalled\nlinux-firmware-qualcomm-misc\t20260319.git217ca6e4-0ubuntu2.1\tinstalled\nlinux-firmware-qualcomm-wireless\t20260319.git217ca6e4-0ubuntu1.2\tinstalled\nlinux-firmware-realtek\t20260319.git217ca6e4-0ubuntu1.2\tinstalled\nlinux-generic\t7.0.0-43.43\tinstalled\nlinux-headers-7.0.0-42\t7.0.0-42.42\tinstalled\nlinux-headers-7.0.0-42-generic\t7.0.0-42.42\tinstalled\nlinux-headers-7.0.0-43\t7.0.0-43.43\tinstalled\nlinux-headers-7.0.0-43-generic\t7.0.0-43.43\tinstalled\nlinux-headers-generic\t7.0.0-43.43\tinstalled\nlinux-image-7.0.0-28-generic\t7.0.0-28.28\tconfig-files\nlinux-image-7.0.0-38-generic\t7.0.0-38.38\tconfig-files\nlinux-image-7.0.0-42-generic\t7.0.0-42.42\tinstalled\nlinux-image-7.0.0-43-generic\t7.0.0-43.43\tinstalled\nlinux-image-generic\t7.0.0-43.43\tinstalled\nlinux-image-unsigned-7.0.0-14-generic\t7.0.0-14.14\tconfig-files\nlinux-libc-dev:amd64\t7.0.0-43.43\tinstalled\nlinux-main-modules-v4l2loopback-7.0.0-42-generic\t7.0.0-42.42\tinstalled\nlinux-main-modules-v4l2loopback-7.0.0-43-generic\t7.0.0-43.43\tinstalled\nlinux-main-modules-zfs-7.0.0-14-generic\t7.0.0-14.14+3\tconfig-files\nlinux-main-modules-zfs-7.0.0-28-generic\t7.0.0-28.28+1\tconfig-files\nlinux-main-modules-zfs-7.0.0-38-generic\t7.0.0-38.38\tconfig-files\nlinux-main-modules-zfs-7.0.0-42-generic\t7.0.0-42.42\tinstalled\nlinux-main-modules-zfs-7.0.0-43-generic\t7.0.0-43.43\tinstalled\nlinux-modules-7.0.0-14-generic\t7.0.0-14.14\tconfig-files\nlinux-modules-7.0.0-28-generic\t7.0.0-28.28\tconfig-files\nlinux-modules-7.0.0-38-generic\t7.0.0-38.38\tconfig-files\nlinux-modules-7.0.0-42-generic\t7.0.0-42.42\tinstalled\nlinux-modules-7.0.0-43-generic\t7.0.0-43.43\tinstalled\nlinux-perf\t7.0.0-43.43\tinstalled\nlinux-sysctl-defaults\t4.15ubuntu5\tinstalled\nlinux-tools-7.0.0-42\t7.0.0-42.42\tinstalled\nlinux-tools-7.0.0-42-generic\t7.0.0-42.42\tinstalled\nlinux-tools-7.0.0-43\t7.0.0-43.43\tinstalled\nlinux-tools-7.0.0-43-generic\t7.0.0-43.43\tinstalled\nlinux-tools-common\t7.0.0-43.43\tinstalled\nlocales\t2.43-2ubuntu2.7\tinstalled\nlogin\t1:4.16.0-2+really2.41.3-3ubuntu2.2\tinstalled\nlogin.defs\t1:4.17.4-2ubuntu3\tinstalled\nlogrotate\t3.22.0-1build1\tinstalled\nlogsave\t1.47.2-3ubuntu4\tinstalled\nlsb-base\t11.6build1\tinstalled\nlsb-release\t12.1-2build1\tinstalled\nlshw\t02.19.git.2021.06.19.996aaad9c7-2.1ubuntu3\tinstalled\nlsof\t4.99.4+dfsg-2build2\tinstalled\nlvm2\t2.03.31-2ubuntu3\tinstalled\nlxd-agent-loader\t0.13ubuntu0\tinstalled\nlxd-installer\t14ubuntu0\tinstalled\nmakedumpfile\t1:1.7.7-1\tinstalled\nman-db\t2.13.1-1build1\tinstalled\nmanpages\t6.17-1\tinstalled\nmanpages-dev\t6.17-1\tinstalled\nmawk\t1.3.4.20260129-1\tinstalled\nmdadm\t4.5-5ubuntu1.1\tinstalled\nmedia-types\t14.0.0build1\tinstalled\nmodemmanager\t1.25.95-1ubuntu1\tinstalled\nmokutil\t0.7.2-2\tinstalled\nmotd-news-config\t14ubuntu6.2\tinstalled\nmount\t2.41.3-3ubuntu2.2\tinstalled\nmtr-tiny\t0.95-1.1ubuntu2\tinstalled\nmultipath-tools\t0.14.3-2ubuntu1\tinstalled\nnano\t8.7.1-1ubuntu0.1\tinstalled\nncurses-base\t6.6+20251231-1\tinstalled\nncurses-bin\t6.6+20251231-1\tinstalled\nncurses-term\t6.6+20251231-1\tinstalled\nneedrestart\t3.11-1ubuntu2.26.04.1\tinstalled\nnetbase\t6.5build1\tinstalled\nnetcat-openbsd\t1.234-1\tinstalled\nnetplan-generator\t1.2-1ubuntu5.1\tinstalled\nnetplan.io\t1.2-1ubuntu5.1\tinstalled\nnetworkd-dispatcher\t2.2.4-1.1ubuntu1\tinstalled\nnftables\t1.1.6-1\tinstalled\nntfs-3g\t1:2022.10.3-5ubuntu1.1\tinstalled\nnumactl\t2.0.19-1build1\tinstalled\nopen-iscsi\t2.1.11-3ubuntu3\tinstalled\nopen-vm-tools\t2:13.0.10-1ubuntu1\tinstalled\nopenssh-client\t1:10.2p1-2ubuntu3.8\tinstalled\nopenssh-server\t1:10.2p1-2ubuntu3.8\tinstalled\nopenssh-sftp-server\t1:10.2p1-2ubuntu3.8\tinstalled\nopenssl\t3.5.5-1ubuntu3.7\tinstalled\nopenssl-provider-legacy\t3.5.5-1ubuntu3.7\tinstalled\nos-prober\t1.84ubuntu1\tinstalled\noverlayroot\t0.58ubuntu\tinstalled\npackagekit\t1.3.4-3ubuntu1.2\tinstalled\nparted\t3.6-6\tinstalled\npasswd\t1:4.17.4-2ubuntu3\tinstalled\npatch\t2.8-2build1\tinstalled\npci.ids\t0.0~2026.02.12-1\tinstalled\npciutils\t1:3.14.0-1build2\tinstalled\nperl\t5.40.1-7ubuntu0.4\tinstalled\nperl-base\t5.40.1-7ubuntu0.4\tinstalled\nperl-modules-5.40\t5.40.1-7ubuntu0.4\tinstalled\npigz\t2.8-1build1\tinstalled\npinentry-curses\t1.3.2-3ubuntu1\tinstalled\nplymouth\t24.004.60+git20250831.4a3c171d-0ubuntu8\tinstalled\nplymouth-theme-ubuntu-text\t24.004.60+git20250831.4a3c171d-0ubuntu8\tinstalled\npnp.ids\t0.394-1build1\tinstalled\npolkitd\t127-2ubuntu1.1\tinstalled\npollinate\t4.33-4ubuntu6\tinstalled\npowermgmt-base\t1.38ubuntu2\tinstalled\nprocps\t2:4.0.4-9ubuntu1\tinstalled\npsmisc\t23.7-2ubuntu2\tinstalled\npublicsuffix\t20260129.1928-1\tinstalled\npython-apt-common\t3.1.0ubuntu1.1\tinstalled\npython3\t3.14.3-0ubuntu2\tinstalled\npython3-acme\t4.0.0-2\tinstalled\npython3-apport\t2.34.1-0ubuntu0.1\tinstalled\npython3-apt\t3.1.0ubuntu1.1\tinstalled\npython3-attr\t25.4.0-1build1\tinstalled\npython3-autocommand\t2.2.2-4\tinstalled\npython3-automat\t25.4.16-1build1\tinstalled\npython3-bcrypt\t5.0.0-3build1\tinstalled\npython3-blinker\t1.9.0-2build1\tinstalled\npython3-boto3\t1.40.72-1build1\tinstalled\npython3-botocore\t1.40.72+repack-1build1\tinstalled\npython3-bpfcc\t0.35.0+ds-1ubuntu2\tinstalled\npython3-certbot\t4.0.0-4\tinstalled\npython3-certifi\t2026.1.4+ds-1\tinstalled\npython3-cffi-backend:amd64\t2.0.0-3build1\tinstalled\npython3-chardet\t5.2.0+dfsg-2build1\tinstalled\npython3-click\t8.2.0+0.really.8.1.8-1build1\tinstalled\npython3-commandnotfound\t23.04.0build1\tinstalled\npython3-configargparse\t1.7-2\tinstalled\npython3-configobj\t5.0.9-1build1\tinstalled\npython3-constantly\t23.10.4-2build1\tinstalled\npython3-cryptography\t46.0.5-1ubuntu2.2\tinstalled\npython3-dateutil\t2.9.0-4build1\tinstalled\npython3-dbus\t1.4.0-1build2\tinstalled\npython3-debconf\t1.5.92\tinstalled\npython3-debian\t1.0.1ubuntu2\tinstalled\npython3-distro\t1.9.0-1build1\tinstalled\npython3-distro-info\t1.15\tinstalled\npython3-distupgrade\t1:26.04.25\tinstalled\npython3-gdbm\t3.14.3-0ubuntu2\tinstalled\npython3-gi\t3.56.2-1\tinstalled\npython3-hamcrest\t2.1.0-3\tinstalled\npython3-httplib2\t0.22.0-1ubuntu0.1\tinstalled\npython3-hyperlink\t21.0.0-6build1\tinstalled\npython3-icu\t2.16.1-1build1\tinstalled\npython3-idna\t3.11-1ubuntu0.1\tinstalled\npython3-incremental\t24.7.2-4\tinstalled\npython3-inflect\t7.5.0-1build1\tinstalled\npython3-jaraco.context\t6.0.1-2\tinstalled\npython3-jaraco.functools\t4.1.0-1build1\tinstalled\npython3-jaraco.text\t4.0.0-1build1\tinstalled\npython3-jmespath\t1.0.1-1build1\tinstalled\npython3-josepy\t2.2.0-1\tinstalled\npython3-json-pointer\t2.4-4\tconfig-files\npython3-jsonpatch\t1.32-6\tconfig-files\npython3-jsonschema\t4.19.2-6ubuntu2\tconfig-files\npython3-jwt\t2.10.1-4ubuntu1.4\tinstalled\npython3-launchpadlib\t2.1.0-1build1\tinstalled\npython3-lazr.restfulclient\t0.14.6-3build1\tinstalled\npython3-lazr.uri\t1.0.6-7build1\tinstalled\npython3-linkify-it\t2.0.3-1ubuntu3\tinstalled\npython3-magic\t2:0.4.27-3build1\tinstalled\npython3-markdown-it\t3.0.0-3build1\tinstalled\npython3-mdurl\t0.1.2-1build1\tinstalled\npython3-minimal\t3.14.3-0ubuntu2\tinstalled\npython3-more-itertools\t10.8.0-1build1\tinstalled\npython3-netaddr\t1.3.0-1build1\tinstalled\npython3-netifaces:amd64\t0.11.0-2build7\tinstalled\npython3-netplan\t1.2-1ubuntu5.1\tinstalled\npython3-oauthlib\t3.3.1-1build1\tinstalled\npython3-openssl\t25.3.0-1ubuntu1\tinstalled\npython3-packaging\t26.0-1\tinstalled\npython3-parsedatetime\t2.6-3build1\tinstalled\npython3-pexpect\t4.9-4\tinstalled\npython3-pkg-resources\t78.1.1-0.1build1\tinstalled\npython3-problem-report\t2.34.1-0ubuntu0.1\tinstalled\npython3-ptyprocess\t0.7.0-6build1\tinstalled\npython3-pyasn1\t0.6.3-1ubuntu0.2\tinstalled\npython3-pyasn1-modules\t0.4.1-2build1\tinstalled\npython3-pyasyncore\t1.0.2-3build1\tinstalled\npython3-pygments\t2.19.2+dfsg-1\tinstalled\npython3-pyinotify\t0.9.6-5build1\tinstalled\npython3-pyparsing\t3.3.2-2\tinstalled\npython3-pytz\t2025.2-5\tinstalled\npython3-requests\t2.32.5+dfsg-1ubuntu1.1\tinstalled\npython3-rfc3339\t2.0.1-2\tinstalled\npython3-rich\t13.9.4-1.2\tinstalled\npython3-ruamel.yaml\t0.18.10+ds-1build1\tinstalled\npython3-ruamel.yaml.clib\t0.2.15+ds-1build1\tinstalled\npython3-s3transfer\t0.14.0-1build1\tinstalled\npython3-serial\t3.5-2build1\tinstalled\npython3-service-identity\t24.2.0-1build1\tinstalled\npython3-setuptools\t78.1.1-0.1build1\tinstalled\npython3-six\t1.17.0-2build1\tinstalled\npython3-software-properties\t0.120.1\tinstalled\npython3-systemd\t235-1build9\tinstalled\npython3-twisted\t25.5.0-5ubuntu0.2\tinstalled\npython3-typeguard\t4.4.4-2\tinstalled\npython3-typing-extensions\t4.15.0-2\tinstalled\npython3-uc-micro\t1.0.3-1build1\tinstalled\npython3-update-manager\t1:26.04.5\tinstalled\npython3-urllib3\t2.6.3-1ubuntu1.2\tinstalled\npython3-wadllib\t2.0.0-3\tinstalled\npython3-xkit\t0.5.0ubuntu8\tinstalled\npython3-yaml\t6.0.3-1build1\tinstalled\npython3-zipp\t3.23.0-1build1\tinstalled\npython3-zope.interface\t8.2-1build1\tinstalled\npython3.14\t3.14.4-1ubuntu0.2\tinstalled\npython3.14-gdbm\t3.14.4-1ubuntu0.2\tinstalled\npython3.14-minimal\t3.14.4-1ubuntu0.2\tinstalled\nreadline-common\t8.3-4\tinstalled\nrpcsvc-proto\t1.4.3-1build1\tinstalled\nrsync\t3.4.1+ds1-7ubuntu0.3\tinstalled\nrsyslog\t8.2512.0-1ubuntu4.2\tinstalled\nrunc\t1.4.0-0ubuntu1\tinstalled\nrust-coreutils\t0.10.0-1ubuntu2~26.04.1\tinstalled\nsbsigntool\t0.9.4-3.1ubuntu9\tinstalled\nscreen\t4.9.1-3ubuntu2\tinstalled\nsecureboot-db\t1.9build2\tinstalled\nsed\t4.9-2ubuntu1\tinstalled\nsensible-utils\t0.0.26build1\tinstalled\nsg3-utils\t1.48-3ubuntu3.2\tinstalled\nsg3-utils-udev\t1.48-3ubuntu3.2\tinstalled\nsgml-base\t1.31+nmu1build1\tinstalled\nshared-mime-info\t2.4-5build3\tinstalled\nsnapd\t2.76.3+ubuntu26.04\tinstalled\nsoftware-properties-common\t0.120.1\tinstalled\nsos\t4.11.2-0ubuntu0.2\tinstalled\nsquashfs-tools\t1:4.7.5-1\tinstalled\nssh-import-id\t5.11-0ubuntu4\tinstalled\nstrace\t6.19+ds-0ubuntu5\tinstalled\nsudo\t1.9.17p2-1ubuntu3.2\tinstalled\nsudo-common\t1.2ubuntu\tinstalled\nsudo-rs\t0.2.13-0ubuntu1.2\tinstalled\nsysstat\t12.7.7-0ubuntu2\tinstalled\nsystemd\t259.5-0ubuntu3.4\tinstalled\nsystemd-cryptsetup\t259.5-0ubuntu3.4\tinstalled\nsystemd-hwe-hwdb\t259.5.3ubuntu\tinstalled\nsystemd-resolved\t259.5-0ubuntu3.4\tinstalled\nsystemd-sysv\t259.5-0ubuntu3.4\tinstalled\nsysvinit-utils\t3.15-5ubuntu1\tinstalled\ntar\t1.35+dfsg-4ubuntu0.4\tinstalled\ntcl\t8.6.16build1\tinstalled\ntcl8.6\t8.6.17+dfsg-1build1\tinstalled\ntcpdump\t4.99.6-1\tinstalled\ntelnet\t0.17+2.7-2ubuntu1.1\tinstalled\nthermald\t2.5.11-0ubuntu1.1\tinstalled\nthin-provisioning-tools\t1.1.0-4ubuntu2\tinstalled\ntime\t1.9-0.4\tinstalled\ntmux\t3.6a-2ubuntu0.1\tinstalled\ntnftp\t20260211-1\tinstalled\ntpm-udev\t4.1.3-6\tinstalled\ntrace-cmd\t3.3.3-1ubuntu2\tinstalled\ntzdata\t2026e-0ubuntu0.26.04.1\tinstalled\nubuntu-drivers-common\t1:0.10.9\tinstalled\nubuntu-fan\t0.12.17\tinstalled\nubuntu-kernel-accessories\t1.570.4\tinstalled\nubuntu-keyring\t2023.11.28.1build1\tinstalled\nubuntu-minimal\t1.570.4\tinstalled\nubuntu-pro-client\t37.2ubuntu0.1\tinstalled\nubuntu-pro-client-l10n\t37.2ubuntu0.1\tinstalled\nubuntu-release-upgrader-core\t1:26.04.25\tinstalled\nubuntu-standard\t1.570.4\tinstalled\nucf\t3.0052ubuntu1\tinstalled\nudev\t259.5-0ubuntu3.4\tinstalled\nudisks2\t2.10.91-1ubuntu2.1\tinstalled\nufw\t0.36.2-9build1\tinstalled\nunattended-upgrades\t2.12ubuntu9\tinstalled\nunminimize\t0.5build1\tinstalled\nupdate-manager-core\t1:26.04.5\tinstalled\nupdate-notifier-common\t3.207.2\tinstalled\nupower\t1.91.1-1\tinstalled\nusb-modeswitch\t2.6.2-1ubuntu1\tinstalled\nusb-modeswitch-data\t20191128-7build1\tinstalled\nusb.ids\t2025.12.13-1\tinstalled\nusbmuxd\t1.1.1-7\tinstalled\nusbutils\t1:019-1\tinstalled\nutil-linux\t2.41.3-3ubuntu2.2\tinstalled\nutil-linux-extra\t2.41.3-3ubuntu2.2\tinstalled\nuuid-runtime\t2.41.3-3ubuntu2.2\tinstalled\nvim\t2:9.1.2141-1ubuntu4.9\tinstalled\nvim-common\t2:9.1.2141-1ubuntu4.9\tinstalled\nvim-runtime\t2:9.1.2141-1ubuntu4.9\tinstalled\nvim-tiny\t2:9.1.2141-1ubuntu4.9\tinstalled\nwget\t1.25.0-2ubuntu4.4\tinstalled\nwhiptail\t0.52.25-1ubuntu3\tinstalled\nwhois\t5.6.6\tinstalled\nwireless-regdb\t2026.05.30-0ubuntu1~26.04.1\tinstalled\nxauth\t1:1.1.2-1.1build1\tinstalled\nxdg-user-dirs\t0.19-1\tinstalled\nxfsprogs\t6.18.0-3\tinstalled\nxkb-data\t2.46-2\tinstalled\nxml-core\t0.19build1\tinstalled\nxxd\t2:9.1.2141-1ubuntu4.9\tinstalled\nxz-utils\t5.8.3-1ubuntu0.1\tinstalled\nzerofree\t1.1.1-1build6\tinstalled\nzlib1g:amd64\t1:1.3.dfsg+really1.3.1-1ubuntu3.2\tinstalled\nzstd\t1.5.7+dfsg-3\tinstalled"
+    },
+    "manual_packages": {
+      "exit_code": 0,
+      "output": "apparmor\napport\napt\nbash\nbcache-tools\nbtrfs-progs\ncertbot\nchrony\nconntrack\ncryptsetup\ncurl\ndash\ndbus\ndiffutils\ndocker-compose-v2\ndocker.io\ne2fsprogs\nfail2ban\nfindutils\nfonts-ubuntu-console\nfwupd\ngdisk\ngit\ngnupg\ngrep\ngzip\nhostname\nhtop\nhwctl\ninit\nkdump-tools\nlandscape-common\nlinux-generic\nlvm2\nlxd-agent-loader\nlxd-installer\nmdadm\nmotd-news-config\nmultipath-tools\nncurses-base\nncurses-bin\nneedrestart\nnetbase\nopen-iscsi\nopen-vm-tools\nopenssh-server\noverlayroot\nparted\npatch\npollinate\npython3-ruamel.yaml\nsnapd\nsoftware-properties-common\nsos\nsudo\nsudo-rs\nsystemd\nsystemd-resolved\nsystemd-sysv\ntmux\nubuntu-drivers-common\nubuntu-minimal\nubuntu-release-upgrader-core\nubuntu-standard\nudev\nunattended-upgrades\nunminimize\nupdate-notifier-common\nutil-linux\nvim\nxfsprogs"
+    },
+    "held_packages": {
+      "exit_code": 0,
+      "output": ""
+    },
+    "upgrade_simulation_cached_metadata": {
+      "exit_code": 0,
+      "output": "Reading package lists...\nBuilding dependency tree...\nReading state information...\nCalculating upgrade...\nThe following upgrades have been deferred due to phasing:\n  fwupd libfwupd3 snapd ubuntu-drivers-common\nThe following packages will be upgraded:\n  base-files containerd distro-info libnss-systemd libopeniscsiusr\n  libpam-systemd libsystemd-shared libsystemd0 libudev1 motd-news-config\n  open-iscsi open-vm-tools python3-distro-info python3-distupgrade\n  python3-software-properties software-properties-common systemd\n  systemd-cryptsetup systemd-resolved systemd-sysv tmux ubuntu-pro-client\n  ubuntu-pro-client-l10n ubuntu-release-upgrader-core udev vim vim-common\n  vim-runtime vim-tiny xxd\n30 upgraded, 0 newly installed, 0 to remove and 4 not upgraded.\nInst motd-news-config [14ubuntu6.2] (14ubuntu6.3 Ubuntu:26.04/resolute-updates [all])\nInst base-files [14ubuntu6.2] (14ubuntu6.3 Ubuntu:26.04/resolute-updates [amd64])\nConf base-files (14ubuntu6.3 Ubuntu:26.04/resolute-updates [amd64])\nInst libsystemd0 [259.5-0ubuntu3.4] (259.9-0ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64]) [systemd:amd64 ]\nConf libsystemd0 (259.9-0ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64]) [systemd:amd64 ]\nInst libpam-systemd [259.5-0ubuntu3.4] (259.9-0ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64]) [systemd:amd64 ]\nInst systemd-sysv [259.5-0ubuntu3.4] (259.9-0ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64]) [systemd:amd64 ]\nInst systemd-resolved [259.5-0ubuntu3.4] (259.9-0ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64]) [systemd:amd64 ]\nInst libsystemd-shared [259.5-0ubuntu3.4] (259.9-0ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64]) [systemd:amd64 on libsystemd-shared:amd64] [udev:amd64 systemd:amd64 systemd-cryptsetup:amd64 ]\nConf libsystemd-shared (259.9-0ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64]) [udev:amd64 systemd:amd64 systemd-cryptsetup:amd64 ]\nInst systemd [259.5-0ubuntu3.4] (259.9-0ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64]) [udev:amd64 systemd-cryptsetup:amd64 ]\nInst systemd-cryptsetup [259.5-0ubuntu3.4] (259.9-0ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64]) [udev:amd64 ]\nInst udev [259.5-0ubuntu3.4] (259.9-0ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64]) []\nInst libudev1 [259.5-0ubuntu3.4] (259.9-0ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64])\nConf libudev1 (259.9-0ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64])\nInst open-iscsi [2.1.11-3ubuntu3] (2.1.11-3ubuntu3.1 Ubuntu:26.04/resolute-updates [amd64]) []\nInst libopeniscsiusr [2.1.11-3ubuntu3] (2.1.11-3ubuntu3.1 Ubuntu:26.04/resolute-updates [amd64])\nInst distro-info [1.15] (1.15ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64])\nInst libnss-systemd [259.5-0ubuntu3.4] (259.9-0ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64])\nInst ubuntu-pro-client-l10n [37.2ubuntu0.1] (38ubuntu0~26.04 Ubuntu:26.04/resolute-updates [amd64]) []\nInst ubuntu-pro-client [37.2ubuntu0.1] (38ubuntu0~26.04 Ubuntu:26.04/resolute-updates [amd64])\nInst vim [2:9.1.2141-1ubuntu4.9] (2:9.1.2141-1ubuntu4.10 Ubuntu:26.04/resolute-updates [amd64]) []\nInst vim-common [2:9.1.2141-1ubuntu4.9] (2:9.1.2141-1ubuntu4.10 Ubuntu:26.04/resolute-updates [all]) [vim-tiny:amd64 ]\nInst vim-tiny [2:9.1.2141-1ubuntu4.9] (2:9.1.2141-1ubuntu4.10 Ubuntu:26.04/resolute-updates [amd64]) []\nInst vim-runtime [2:9.1.2141-1ubuntu4.9] (2:9.1.2141-1ubuntu4.10 Ubuntu:26.04/resolute-updates [all])\nInst xxd [2:9.1.2141-1ubuntu4.9] (2:9.1.2141-1ubuntu4.10 Ubuntu:26.04/resolute-updates [amd64])\nInst python3-distro-info [1.15] (1.15ubuntu0.1 Ubuntu:26.04/resolute-updates [all])\nInst ubuntu-release-upgrader-core [1:26.04.25] (1:26.04.27 Ubuntu:26.04/resolute-updates [all]) []\nInst python3-distupgrade [1:26.04.25] (1:26.04.27 Ubuntu:26.04/resolute-updates [all])\nInst containerd [2.2.2-0ubuntu1.1] (2.2.2-0ubuntu1.2 Ubuntu:26.04/resolute-updates [amd64])\nInst software-properties-common [0.120.1] (0.120.2 Ubuntu:26.04/resolute-updates [all]) []\nInst python3-software-properties [0.120.1] (0.120.2 Ubuntu:26.04/resolute-updates [all])\nInst tmux [3.6a-2ubuntu0.1] (3.6a-2ubuntu0.2 Ubuntu:26.04/resolute-updates [amd64])\nInst open-vm-tools [2:13.0.10-1ubuntu1] (2:13.0.10-1ubuntu1.1 Ubuntu:26.04/resolute-updates [amd64])\nConf motd-news-config (14ubuntu6.3 Ubuntu:26.04/resolute-updates [all])\nConf libpam-systemd (259.9-0ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64])\nConf systemd-sysv (259.9-0ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64])\nConf systemd-resolved (259.9-0ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64])\nConf systemd (259.9-0ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64])\nConf systemd-cryptsetup (259.9-0ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64])\nConf udev (259.9-0ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64])\nConf open-iscsi (2.1.11-3ubuntu3.1 Ubuntu:26.04/resolute-updates [amd64])\nConf libopeniscsiusr (2.1.11-3ubuntu3.1 Ubuntu:26.04/resolute-updates [amd64])\nConf distro-info (1.15ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64])\nConf libnss-systemd (259.9-0ubuntu0.1 Ubuntu:26.04/resolute-updates [amd64])\nConf ubuntu-pro-client-l10n (38ubuntu0~26.04 Ubuntu:26.04/resolute-updates [amd64])\nConf ubuntu-pro-client (38ubuntu0~26.04 Ubuntu:26.04/resolute-updates [amd64])\nConf vim (2:9.1.2141-1ubuntu4.10 Ubuntu:26.04/resolute-updates [amd64])\nConf vim-common (2:9.1.2141-1ubuntu4.10 Ubuntu:26.04/resolute-updates [all])\nConf vim-tiny (2:9.1.2141-1ubuntu4.10 Ubuntu:26.04/resolute-updates [amd64])\nConf vim-runtime (2:9.1.2141-1ubuntu4.10 Ubuntu:26.04/resolute-updates [all])\nConf xxd (2:9.1.2141-1ubuntu4.10 Ubuntu:26.04/resolute-updates [amd64])\nConf python3-distro-info (1.15ubuntu0.1 Ubuntu:26.04/resolute-updates [all])\nConf ubuntu-release-upgrader-core (1:26.04.27 Ubuntu:26.04/resolute-updates [all])\nConf python3-distupgrade (1:26.04.27 Ubuntu:26.04/resolute-updates [all])\nConf containerd (2.2.2-0ubuntu1.2 Ubuntu:26.04/resolute-updates [amd64])\nConf software-properties-common (0.120.2 Ubuntu:26.04/resolute-updates [all])\nConf python3-software-properties (0.120.2 Ubuntu:26.04/resolute-updates [all])\nConf tmux (3.6a-2ubuntu0.2 Ubuntu:26.04/resolute-updates [amd64])\nConf open-vm-tools (2:13.0.10-1ubuntu1.1 Ubuntu:26.04/resolute-updates [amd64])"
+    },
+    "services": {
+      "exit_code": 0,
+      "output": "UNIT                                        LOAD      ACTIVE   SUB     DESCRIPTION\napparmor.service                            loaded    active   exited  Load AppArmor profiles\napport-autoreport.service                   loaded    inactive dead    Process error reports when automatic reporting is enabled\napport.service                              loaded    active   exited  automatic crash report generation\napt-daily-upgrade.service                   loaded    inactive dead    Daily apt upgrade and clean activities\napt-daily.service                           loaded    inactive dead    Daily apt download activities\nauditd.service                              not-found inactive dead    auditd.service\nblk-availability.service                    loaded    active   exited  Availability of block devices\ncertbot.service                             loaded    inactive dead    Certbot\nchrony.service                              loaded    active   running chrony, an NTP client/server\ncloud-init-local.service                    not-found inactive dead    cloud-init-local.service\nconnman.service                             not-found inactive dead    connman.service\nconsole-screen.service                      not-found inactive dead    console-screen.service\nconsole-setup.service                       loaded    active   exited  Set console font and keymap\ncontainerd.service                          loaded    active   running containerd container runtime\ncron.service                                loaded    active   running Regular background program processing daemon\ndbus.service                                loaded    active   running D-Bus System Message Bus\ndisplay-manager.service                     not-found inactive dead    display-manager.service\ndm-event.service                            loaded    inactive dead    Device-mapper event daemon\ndmesg.service                               loaded    inactive dead    Save initial kernel messages after boot\ndocker.service                              loaded    active   running Docker Application Container Engine\ndpkg-db-backup.service                      loaded    inactive dead    Daily dpkg database backup service\ndracut-cmdline.service                      loaded    inactive dead    dracut cmdline hook\ndracut-initqueue.service                    loaded    inactive dead    dracut initqueue hook\ndracut-mount.service                        loaded    inactive dead    dracut mount hook\ndracut-pre-mount.service                    loaded    inactive dead    dracut pre-mount hook\ndracut-pre-pivot.service                    loaded    inactive dead    dracut pre-pivot and cleanup hook\ndracut-pre-trigger.service                  loaded    inactive dead    dracut pre-trigger hook\ndracut-pre-udev.service                     loaded    inactive dead    dracut pre-udev hook\ndracut-shutdown-onfailure.service           loaded    inactive dead    Service executing upon dracut-shutdown failure to perform cleanup\ndracut-shutdown.service                     loaded    active   exited  Restore /run/initramfs on shutdown\ne2scrub_all.service                         loaded    inactive dead    Online ext4 Metadata Check for All Filesystems\ne2scrub_reap.service                        loaded    inactive dead    Remove Stale Online ext4 Metadata Check Snapshots\nemergency.service                           loaded    inactive dead    Emergency Shell\nfail2ban.service                            loaded    active   running Fail2Ban Service\nfcoe.service                                not-found inactive dead    fcoe.service\nfinalrd.service                             loaded    active   exited  Create final runtime dir for shutdown pivot root\nfirewalld.service                           not-found inactive dead    firewalld.service\nfstrim.service                              loaded    inactive dead    Discard unused blocks on filesystems from /etc/fstab\nfwupd-refresh.service                       loaded    inactive dead    Refresh fwupd metadata and update motd\nfwupd.service                               loaded    active   running Firmware update daemon\ngetty-static.service                        loaded    inactive dead    getty on tty2-tty6 if dbus and logind are not available\ngetty@tty1.service                          loaded    active   running Getty on tty1\ngrub-initrd-fallback.service                loaded    inactive dead    GRUB failed boot detection\ngrub2-common.service                        loaded    inactive dead    Record successful boot for GRUB\ninitrd-cleanup.service                      loaded    inactive dead    Cleaning Up and Shutting Down Daemons\ninitrd-parse-etc.service                    loaded    inactive dead    Mountpoints Configured in the Real Root\ninitrd-switch-root.service                  loaded    inactive dead    Switch Root\ninitrd-udevadm-cleanup-db.service           loaded    inactive dead    Cleanup udev Database\nip6tables.service                           not-found inactive dead    ip6tables.service\nipset.service                               not-found inactive dead    ipset.service\niptables.service                            not-found inactive dead    iptables.service\niscsi-shutdown.service                      not-found inactive dead    iscsi-shutdown.service\niscsid.service                              loaded    inactive dead    iSCSI initiator daemon (iscsid)\nkbd.service                                 not-found inactive dead    kbd.service\nkdump-tools.service                         loaded    active   exited  Kernel crash dump capture service\nkeyboard-setup.service                      loaded    active   exited  Set the console keyboard layout\nkmod-static-nodes.service                   loaded    active   exited  Create List of Static Device Nodes\nldconfig.service                            loaded    inactive dead    Rebuild Dynamic Linker Cache\nlogrotate.service                           loaded    inactive dead    Rotate log files\nlvm2-activation-early.service               not-found inactive dead    lvm2-activation-early.service\nlvm2-lvmpolld.service                       loaded    inactive dead    LVM2 poll daemon\nlvm2-monitor.service                        loaded    active   exited  Monitoring of LVM2 mirrors, snapshots etc. using dmeventd or progress polling\nlxc.service                                 not-found inactive dead    lxc.service\nman-db.service                              loaded    inactive dead    Daily man-db regeneration\nModemManager.service                        loaded    active   running Modem Manager\nmodprobe@configfs.service                   loaded    inactive dead    Load Kernel Module configfs\nmodprobe@dm_mod.service                     loaded    inactive dead    Load Kernel Module dm_mod\nmodprobe@dm_multipath.service               loaded    inactive dead    Load Kernel Module dm_multipath\nmodprobe@drm.service                        loaded    inactive dead    Load Kernel Module drm\nmodprobe@efi_pstore.service                 loaded    inactive dead    Load Kernel Module efi_pstore\nmodprobe@fuse.service                       loaded    inactive dead    Load Kernel Module fuse\nmodprobe@loop.service                       loaded    inactive dead    Load Kernel Module loop\nmodprobe@sd_mod.service                     loaded    inactive dead    Load Kernel Module sd_mod\nmotd-news.service                           loaded    inactive dead    Message of the Day\nmultipathd-queueing.service                 loaded    active   exited  Enable queuing for multipath maps\nmultipathd.service                          loaded    active   running Device-Mapper Multipath Device Controller\nnetplan-configure.service                   loaded    active   exited  Netplan Backend Configuration\nnetplan-ipv6-gateway.service                loaded    active   exited  Add missing IPv6 default gateway to Netplan configuration\nnetplan-ovs-cleanup.service                 loaded    inactive dead    OpenVSwitch configuration for cleanup\nnetworkd-dispatcher.service                 loaded    active   running Dispatcher daemon for systemd-networkd\nnetworking.service                          not-found inactive dead    networking.service\nNetworkManager.service                      not-found inactive dead    NetworkManager.service\nnftables.service                            loaded    inactive dead    nftables\nntp.service                                 not-found inactive dead    ntp.service\nntpsec.service                              not-found inactive dead    ntpsec.service\nopen-iscsi.service                          loaded    inactive dead    Login to default iSCSI targets\nopen-vm-tools.service                       loaded    inactive dead    Service for virtual machines hosted on VMware\nopenntpd.service                            not-found inactive dead    openntpd.service\novsdb-server.service                        not-found inactive dead    ovsdb-server.service\nplymouth-quit-wait.service                  loaded    active   exited  Hold until boot process finishes up\nplymouth-quit.service                       loaded    active   exited  Terminate Plymouth Boot Screen\nplymouth-read-write.service                 loaded    active   exited  Tell Plymouth To Write Out Runtime Data\nplymouth-start.service                      loaded    inactive dead    Show Plymouth Boot Screen\nplymouth-switch-root.service                loaded    inactive dead    Plymouth switch root service\npolkit.service                              loaded    active   running Authorization Manager\npollinate.service                           loaded    inactive dead    Pollinate to seed the pseudo random number generator\nrbdmap.service                              not-found inactive dead    rbdmap.service\nrc-local.service                            loaded    inactive dead    /etc/rc.local Compatibility\nrescue.service                              loaded    inactive dead    Rescue Shell\nrsyslog.service                             loaded    active   running System Logging Service\nsecureboot-db.service                       loaded    inactive dead    Secure Boot updates for DB and DBX\nsetvtrgb.service                            loaded    active   exited  Set console scheme\nsnapd.apparmor.service                      loaded    active   exited  Load AppArmor profiles managed internally by snapd\nsnapd.autoimport.service                    loaded    inactive dead    Auto import assertions from block devices\nsnapd.core-fixup.service                    loaded    inactive dead    Automatically repair incorrect owner/permissions on core devices\nsnapd.failure.service                       loaded    inactive dead    Failure handling of the snapd snap\nsnapd.recovery-chooser-trigger.service      loaded    inactive dead    Wait for the Ubuntu Core chooser trigger\nsnapd.seeded.service                        loaded    active   exited  Wait until snapd is fully seeded\nsnapd.service                               loaded    inactive dead    Snap Daemon\nsnapd.snap-repair.service                   loaded    inactive dead    Automatically fetch and run repair assertions\nsnapd.system-shutdown.service               loaded    inactive dead    Ubuntu core (all-snaps) system shutdown helper setup service\nssh-keygen.service                          loaded    inactive dead    Generate SSH host keys\nssh.service                                 loaded    active   running OpenBSD Secure Shell server\nsshd-keygen.service                         loaded    inactive dead    Generate sshd host keys on first boot\nsshd@sshd-keygen.service                    loaded    inactive dead    OpenBSD Secure Shell server per-connection daemon\nsysstat-collect.service                     loaded    inactive dead    system activity accounting tool\nsysstat-rotate.service                      loaded    inactive dead    system activity accounting tool\nsysstat-summary.service                     loaded    inactive dead    Generate a daily summary of process accounting\nsysstat.service                             loaded    active   exited  Resets System Activity Logs\nsystemd-ask-password-console.service        loaded    inactive dead    Dispatch Password Requests to Console\nsystemd-ask-password-plymouth.service       loaded    inactive dead    Forward Password Requests to Plymouth\nsystemd-ask-password-wall.service           loaded    inactive dead    Forward Password Requests to Wall\nsystemd-battery-check.service               loaded    inactive dead    Early Battery Level Check\nsystemd-binfmt.service                      loaded    active   exited  Set Up Additional Binary Formats\nsystemd-bsod.service                        loaded    inactive dead    Display Boot-Time Emergency Messages In Full Screen\nsystemd-confext-initrd.service              loaded    inactive dead    Merge System Configuration Images into /etc/\nsystemd-confext.service                     loaded    inactive dead    Merge System Configuration Images into /etc/\nsystemd-firstboot.service                   loaded    inactive dead    Initial Setup\nsystemd-fsck-root.service                   loaded    active   exited  File System Check on Root Device\nsystemd-hibernate-clear.service             loaded    inactive dead    Clear Stale Hibernate Storage Info\nsystemd-hibernate-resume.service            loaded    inactive dead    Resume from hibernation\nsystemd-hibernate.service                   loaded    inactive dead    System Hibernate\nsystemd-hostnamed.service                   loaded    inactive dead    Hostname Service\nsystemd-hwdb-update.service                 loaded    inactive dead    Rebuild Hardware Database\nsystemd-hybrid-sleep.service                loaded    inactive dead    System Hybrid Suspend+Hibernate\nsystemd-journal-catalog-update.service      loaded    inactive dead    Rebuild Journal Catalog\nsystemd-journal-flush.service               loaded    active   exited  Flush Journal to Persistent Storage\nsystemd-journald.service                    loaded    active   running Journal Service\nsystemd-logind.service                      loaded    active   running User Login Management\nsystemd-machine-id-commit.service           loaded    inactive dead    Save Transient machine-id to Disk\nsystemd-modules-load.service                loaded    active   exited  Load Kernel Modules\nsystemd-network-generator.service           loaded    active   exited  Generate Network Units from Kernel Command Line\nsystemd-networkd-persistent-storage.service loaded    active   exited  Enable Persistent Storage in systemd-networkd\nsystemd-networkd-wait-online.service        loaded    active   exited  Wait for Network to be Online\nsystemd-networkd.service                    loaded    active   running Network Management\nsystemd-oomd.service                        not-found inactive dead    systemd-oomd.service\nsystemd-pcrmachine.service                  loaded    inactive dead    TPM PCR Machine ID Measurement\nsystemd-pcrnvdone.service                   loaded    inactive dead    TPM PCR NvPCR Initialization Separator\nsystemd-pcrphase-initrd.service             loaded    inactive dead    TPM PCR Barrier (initrd)\nsystemd-pcrphase-sysinit.service            loaded    inactive dead    TPM PCR Barrier (Initialization)\nsystemd-pcrphase.service                    loaded    inactive dead    TPM PCR Barrier (User)\nsystemd-pcrproduct.service                  loaded    inactive dead    TPM NvPCR Product ID Measurement\nsystemd-pstore.service                      loaded    inactive dead    Platform Persistent Storage Archival\nsystemd-quotacheck-root.service             loaded    inactive dead    Root File System Quota Check\nsystemd-random-seed.service                 loaded    active   exited  Load/Save OS Random Seed\nsystemd-remount-fs.service                  loaded    active   exited  Remount Root and Kernel File Systems\nsystemd-resolved.service                    loaded    active   running Network Name Resolution\nsystemd-rfkill.service                      loaded    inactive dead    Load/Save RF Kill Switch Status\nsystemd-soft-reboot.service                 loaded    inactive dead    Reboot System Userspace\nsystemd-suspend-then-hibernate.service      loaded    inactive dead    System Suspend then Hibernate\nsystemd-suspend.service                     loaded    inactive dead    System Suspend\nsystemd-sysctl.service                      loaded    active   exited  Apply Kernel Variables\nsystemd-sysext-initrd.service               loaded    inactive dead    Merge System Extension Images into /usr/ and /opt/\nsystemd-sysext.service                      loaded    inactive dead    Merge System Extension Images into /usr/ and /opt/\nsystemd-sysusers.service                    loaded    inactive dead    Create System Users\nsystemd-tmpfiles-clean.service              loaded    inactive dead    Cleanup of Temporary Directories\nsystemd-tmpfiles-setup-dev-early.service    loaded    active   exited  Create Static Device Nodes in /dev gracefully\nsystemd-tmpfiles-setup-dev.service          loaded    active   exited  Create Static Device Nodes in /dev\nsystemd-tmpfiles-setup.service              loaded    active   exited  Create System Files and Directories\nsystemd-tpm2-setup-early.service            loaded    inactive dead    Early TPM SRK Setup\nsystemd-tpm2-setup.service                  loaded    inactive dead    TPM SRK Setup\nsystemd-udev-load-credentials.service       loaded    active   exited  Load udev Rules from Credentials\nsystemd-udev-settle.service                 loaded    inactive dead    Wait for udev To Complete Device Initialization\nsystemd-udev-trigger.service                loaded    active   exited  Coldplug All udev Devices\nsystemd-udevd.service                       loaded    active   running Rule-based Manager for Device Events and Files\nsystemd-update-done.service                 loaded    inactive dead    Update is Completed\nsystemd-user-sessions.service               loaded    active   exited  Permit User Sessions\nsystemd-vconsole-setup.service              not-found inactive dead    systemd-vconsole-setup.service\nthermald.service                            loaded    inactive dead    Thermal Daemon Service\ntpm-udev.service                            loaded    inactive dead    Handle dynamically added tpm devices\nua-auto-attach.service                      not-found inactive dead    ua-auto-attach.service\nua-reboot-cmds.service                      loaded    inactive dead    Ubuntu Pro reboot cmds\nua-timer.service                            loaded    inactive dead    Ubuntu Pro Timer for running repeated jobs\nubuntu-advantage-cloud-id-shim.service      not-found inactive dead    ubuntu-advantage-cloud-id-shim.service\nubuntu-advantage.service                    loaded    inactive dead    Ubuntu Pro Background Auto Attach\nubuntu-fan.service                          loaded    active   exited  Ubuntu FAN network setup\nudisks2.service                             loaded    active   running Disk Manager\nufw.service                                 loaded    active   exited  Uncomplicated firewall\nunattended-upgrades.service                 loaded    active   running Unattended Upgrades Shutdown\nupdate-notifier-download.service            loaded    inactive dead    Download data for packages that failed at package install time\nupdate-notifier-motd.service                loaded    inactive dead    Check to see whether there is a new version of Ubuntu available\nupower.service                              loaded    active   running Daemon for power management\nuser-runtime-dir@0.service                  loaded    active   exited  User Runtime Directory /run/user/0\nuser@0.service                              loaded    active   running User Manager for UID 0\nuuidd.service                               loaded    inactive dead    Daemon for generating UUIDs\nvgauth.service                              loaded    inactive dead    Authentication service for virtual machines hosted on VMware\nxfs_scrub_all.service                       loaded    inactive dead    Online XFS Metadata Check for All Filesystems\nxfs_scrub_all_fail.service                  loaded    inactive dead    Online XFS Metadata Check for All Filesystems Failure Reporting\nzfs-mount.service                           not-found inactive dead    zfs-mount.service\n\nLegend: LOAD   → Reflects whether the unit definition was properly loaded.\n        ACTIVE → The high-level unit activation state, i.e. generalization of SUB.\n        SUB    → The low-level unit activation state, values depend on unit type.\n\n199 loaded units listed.\nTo show all installed unit files use 'systemctl list-unit-files'."
+    },
+    "failed_units": {
+      "exit_code": 0,
+      "output": "UNIT LOAD ACTIVE SUB DESCRIPTION\n\n0 loaded units listed."
+    },
+    "listeners": {
+      "exit_code": 0,
+      "output": "Netid State  Recv-Q Send-Q                   Local Address:Port  Peer Address:Port\nudp   UNCONN 0      0                           127.0.0.54:53         0.0.0.0:*   \nudp   UNCONN 0      0                        127.0.0.53%lo:53         0.0.0.0:*   \nudp   UNCONN 0      0                              0.0.0.0:46872      0.0.0.0:*   \nudp   UNCONN 0      0                            127.0.0.1:323        0.0.0.0:*   \nudp   UNCONN 0      0                              0.0.0.0:443        0.0.0.0:*   \nudp   UNCONN 0      0      [fe80::216:3cff:fe8d:132b]%eth0:546           [::]:*   \nudp   UNCONN 0      0                                 [::]:46872         [::]:*   \nudp   UNCONN 0      0                                [::1]:323           [::]:*   \nudp   UNCONN 0      0                                 [::]:443           [::]:*   \ntcp   LISTEN 0      4096                           0.0.0.0:2053       0.0.0.0:*   \ntcp   LISTEN 0      4096                           0.0.0.0:6659       0.0.0.0:*   \ntcp   LISTEN 0      4096                           0.0.0.0:22         0.0.0.0:*   \ntcp   LISTEN 0      4096                         127.0.0.1:36687      0.0.0.0:*   \ntcp   LISTEN 0      4096                     127.0.0.53%lo:53         0.0.0.0:*   \ntcp   LISTEN 0      4096                           0.0.0.0:50553      0.0.0.0:*   \ntcp   LISTEN 0      4096                        127.0.0.54:53         0.0.0.0:*   \ntcp   LISTEN 0      4096                           0.0.0.0:443        0.0.0.0:*   \ntcp   LISTEN 0      4096                              [::]:2053          [::]:*   \ntcp   LISTEN 0      4096                              [::]:6659          [::]:*   \ntcp   LISTEN 0      4096                              [::]:22            [::]:*   \ntcp   LISTEN 0      4096                              [::]:50553         [::]:*   \ntcp   LISTEN 0      4096                              [::]:443           [::]:*"
+    },
+    "firewall": {
+      "exit_code": 0,
+      "output": "Status: active\nLogging: on (low)\nDefault: deny (incoming), allow (outgoing), deny (routed)\nNew profiles: skip\n\nTo                         Action      From\n--                         ------      ----\n22/tcp                     ALLOW IN    Anywhere                  \n443/tcp                    ALLOW IN    Anywhere                  \n443/udp                    ALLOW IN    Anywhere                  \n46872/udp                  ALLOW IN    Anywhere                  \n50553/tcp                  ALLOW IN    Anywhere                  \n2053/tcp                   ALLOW IN    Anywhere                  \n6659/tcp                   ALLOW IN    Anywhere                  \n80/tcp                     ALLOW IN    Anywhere                  \n22/tcp (v6)                ALLOW IN    Anywhere (v6)             \n443/tcp (v6)               ALLOW IN    Anywhere (v6)             \n443/udp (v6)               ALLOW IN    Anywhere (v6)             \n46872/udp (v6)             ALLOW IN    Anywhere (v6)             \n50553/tcp (v6)             ALLOW IN    Anywhere (v6)             \n2053/tcp (v6)              ALLOW IN    Anywhere (v6)             \n6659/tcp (v6)              ALLOW IN    Anywhere (v6)             \n80/tcp (v6)                ALLOW IN    Anywhere (v6)"
+    }
+  }
+}

@@ -1,0 +1,1 @@
+{"retry_started": true, "missing_certificate_in_old_version": true, "affected_inbound": [{"id": 19742, "enabled": true, "port": 14916, "protocol": "hysteria", "clients_count": 1}]}

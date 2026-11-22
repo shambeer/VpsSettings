@@ -1,0 +1,15 @@
+{
+  "success": true,
+  "removed_test_containers": [
+    "vpn-maintenance-3dp-stage-frontend-20261122",
+    "vpn-maintenance-3dp-stage-backend-20261122",
+    "vpn-maintenance-3dp-stage-xui-20261122",
+    "vpn-maintenance-3dp-stage-pg-20261122"
+  ],
+  "removed_test_volumes": [
+    "vpn-maintenance-3dp-stage-pg-20261122",
+    "vpn-maintenance-3dp-stage-xui-20261122"
+  ],
+  "removed_test_network": "vpn-maintenance-3dp-stage-20261122",
+  "production_and_rollback_containers_preserved": true
+}

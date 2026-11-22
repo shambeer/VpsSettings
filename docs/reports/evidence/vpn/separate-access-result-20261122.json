@@ -1,0 +1,13 @@
+{
+  "success": true,
+  "added_users": [
+    "personal",
+    "shared"
+  ],
+  "distinct_identifiers": true,
+  "original_users_preserved": true,
+  "only_amnezia_xray_restarted": true,
+  "server_config_valid": true,
+  "amnezia_client_table_updated": true,
+  "checked_at_utc": "2026-11-22T09:29:55.102670+00:00"
+}

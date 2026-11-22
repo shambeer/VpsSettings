@@ -1,0 +1,34 @@
+{
+  "success": true,
+  "completed_at_utc": "2026-11-22T08:32:13.229117+00:00",
+  "targets": {
+    "backend": "ghcr.io/denpiligrim/3dp-manager-server@sha256:3f760f1ecf6162595b3291c7bd90c689506647333641cad62a7b27ca57d2ace4",
+    "frontend": "ghcr.io/denpiligrim/3dp-manager-client@sha256:373bfcaee91e07e29f97e6a673cf54cdda0b3affda85592504eda2c7ff99ea84"
+  },
+  "new_container_ids": {
+    "backend": "145ada924c5cefcd93937c9281e1e2b570dee7be0fee6ab655788b52e1b724a1",
+    "frontend": "20fc5abe83ecc20cb14866a17f3d76c5e1d297923c53dec178eb5789fa19a90f"
+  },
+  "rollback_container_names": {
+    "backend": "3dp-backend-before-20261122",
+    "frontend": "3dp-frontend-before-20261122"
+  },
+  "database_migration_verified": true,
+  "existing_data_preserved": true,
+  "application": {
+    "frontend_https": 200,
+    "login_status": 201,
+    "protected_api": {
+      "subscriptions": 200,
+      "nodes": 200,
+      "settings": 200
+    },
+    "published_https": 200
+  },
+  "rotation_status_restored": "active",
+  "unrelated_production_services_unchanged": true,
+  "postgres_version_unchanged": true,
+  "postgres_container_unchanged": true,
+  "compose_image_pins_updated": true,
+  "old_images_and_containers_preserved": true
+}

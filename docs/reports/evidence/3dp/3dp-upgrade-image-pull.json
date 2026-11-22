@@ -1,0 +1,25 @@
+{
+  "success": true,
+  "images": [
+    {
+      "role": "backend",
+      "repository": "ghcr.io/denpiligrim/3dp-manager-server",
+      "reference": "ghcr.io/denpiligrim/3dp-manager-server@sha256:3f760f1ecf6162595b3291c7bd90c689506647333641cad62a7b27ca57d2ace4",
+      "digest": "sha256:3f760f1ecf6162595b3291c7bd90c689506647333641cad62a7b27ca57d2ace4",
+      "exit_code": 0,
+      "image_id": "sha256:3f760f1ecf6162595b3291c7bd90c689506647333641cad62a7b27ca57d2ace4",
+      "architecture": "amd64",
+      "created": "2026-10-30T19:43:44.380645479Z"
+    },
+    {
+      "role": "frontend",
+      "repository": "ghcr.io/denpiligrim/3dp-manager-client",
+      "reference": "ghcr.io/denpiligrim/3dp-manager-client@sha256:373bfcaee91e07e29f97e6a673cf54cdda0b3affda85592504eda2c7ff99ea84",
+      "digest": "sha256:373bfcaee91e07e29f97e6a673cf54cdda0b3affda85592504eda2c7ff99ea84",
+      "exit_code": 0,
+      "image_id": "sha256:373bfcaee91e07e29f97e6a673cf54cdda0b3affda85592504eda2c7ff99ea84",
+      "architecture": "amd64",
+      "created": "2026-10-30T19:44:29.812633437Z"
+    }
+  ]
+}

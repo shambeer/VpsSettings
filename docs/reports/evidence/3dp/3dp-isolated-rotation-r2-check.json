@@ -1,0 +1,16 @@
+{
+  "success": true,
+  "completed_at_utc": "2026-11-22T08:24:16.626721+00:00",
+  "consistent_source_snapshots": true,
+  "background_job_status": "success",
+  "inbounds_before": 11,
+  "inbounds_after": 11,
+  "orphaned_inbounds": false,
+  "hysteria_protocol": "hysteria",
+  "fixed_tls_preserved": true,
+  "xray_config_valid": true,
+  "xray_running": true,
+  "sqlite_integrity": "ok",
+  "production_services_untouched": true,
+  "test_nginx_dns_refreshed": true
+}

@@ -1,0 +1,23 @@
+{
+  "success": true,
+  "completed_at_utc": "2026-11-21T10:40:31.639768+00:00",
+  "domain": "servicevps.shamberservice.com",
+  "node_domain_updated": true,
+  "hysteria_template_updated": true,
+  "current_hysteria_id": 19762,
+  "current_hysteria_port": 36417,
+  "current_link_sni_updated": true,
+  "client_auth_unchanged": true,
+  "xray_offline_config_valid": true,
+  "xray_running": true,
+  "xray_final_config_valid": true,
+  "panel_http_status": 200,
+  "sqlite_integrity": "ok",
+  "other_services_unchanged": true,
+  "rotation_status_restored": "active",
+  "rotation_interval_minutes": 30,
+  "next_natural_rotation_at_utc": "2026-11-21T10:47:00.097000+00:00",
+  "natural_rotation_verified": false,
+  "hook_installed": "/etc/letsencrypt/renewal-hooks/deploy/60-3x-ui-domain-cert.sh",
+  "private_key_mode": "0o600"
+}
