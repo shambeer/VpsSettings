@@ -1,1 +1,0 @@
-{"image": "ghcr.io/mhsanaei/3x-ui:3.11.0", "exit_code": 0, "schema_version": 2, "amd64_manifests": [{"digest": "sha256:ed329189f0f743fea3584fe2f1d197a68951c76c7671622655a91e82348bf7fd", "platform": {"architecture": "amd64", "os": "linux"}}]}

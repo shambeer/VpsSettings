@@ -21,14 +21,14 @@ JOB = None
 
 def validate_ip(value):
     address = ipaddress.ip_address(value)
-    if address.version != 4 or not address.is_global:
+    if address.version != 4 or not address.is_global or address.is_multicast or address.is_reserved:
         raise ValueError('Нужен публичный IPv4 сервера')
     return str(address)
 
 
 def validate_domain(value):
     value = value.rstrip('.').lower()
-    if len(value) > 253 or '.' not in value or not all(
+    if len(value) > 253 or '.' not in value or not re.search(r'[a-z]', value.rsplit('.', 1)[-1]) or not all(
             re.fullmatch(r'[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?', part)
             for part in value.split('.')):
         raise ValueError('Нужен домен без схемы, порта и пути; IDN указывать в punycode')

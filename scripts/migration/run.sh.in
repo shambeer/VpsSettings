@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if ! command -v python3 >/dev/null 2>&1; then
+    printf '%s\n' 'Нужен Python 3.11 или новее.' >&2
+    exit 1
+fi
+
+migration_dir=$(mktemp -d)
+migration_package="$migration_dir/vps-migration.pyz"
+trap 'rm -f -- "$migration_package"; rmdir -- "$migration_dir"' EXIT
+
+curl --fail --location --silent --show-error --output "$migration_package" '@PACKAGE_URL@'
+python3 -c 'import hashlib,pathlib,sys; actual=hashlib.sha256(pathlib.Path(sys.argv[1]).read_bytes()).hexdigest(); sys.exit(0 if actual == sys.argv[2] else "SHA256 mismatch; launch cancelled")' "$migration_package" '@PACKAGE_SHA256@'
+python3 -X utf8 "$migration_package" "$@" </dev/tty

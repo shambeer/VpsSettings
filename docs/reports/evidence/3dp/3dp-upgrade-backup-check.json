@@ -1,8 +1,0 @@
-{
-  "validated": true,
-  "archive": "3dp-before-upgrade-20261122T080223Z.tar.gz",
-  "sha256": "0c068f3e91f30648e1a6b107aa317fad2351ea52541728911bdc3e4f5e105b64",
-  "bytes": 24958,
-  "files_verified": 4,
-  "postgres_dump_validated": true
-}

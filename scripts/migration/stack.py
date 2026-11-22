@@ -1,7 +1,9 @@
 import base64
+from contextlib import closing
 import json
 from pathlib import Path
 import secrets
+import sqlite3
 import time
 from urllib.parse import quote, urlencode
 import uuid
@@ -248,6 +250,24 @@ def openvpn(request, reference):
         c.export_access(role, 'openvpn', client, extension='ovpn')
 
 
+def wait_xui_user(directory, username=None):
+    database = directory / 'x-ui.db'
+    for attempt in range(60):
+        if database.is_file():
+            try:
+                with closing(sqlite3.connect(database)) as connection:
+                    if username is None:
+                        count = connection.execute('SELECT count(*) FROM users').fetchone()[0]
+                    else:
+                        count = connection.execute('SELECT count(*) FROM users WHERE username=?', (username,)).fetchone()[0]
+                if count > 0:
+                    return
+            except sqlite3.OperationalError:
+                count = 0
+        time.sleep(1)
+    raise RuntimeError('Пользователь панели 3x-ui не появился в базе')
+
+
 def panels(request):
     administrator = {'login': 'owner', 'xui_password': c.password(), 'manager_password': c.password(),
                      'xui_base_path': '/' + secrets.token_hex(10) + '/',
@@ -255,9 +275,10 @@ def panels(request):
     xui = c.ROOT / 'config/xui'
     xui.mkdir(parents=True)
     create('3x-ui', image('xui'), ports={'2053/tcp': [('127.0.0.1', 2053)]}, mounts=[bind(xui, '/etc/x-ui', False)])
-    time.sleep(3)
+    wait_xui_user(xui)
     c.run(['docker', 'exec', '3x-ui', '/app/x-ui', 'setting', '-username', administrator['login'],
            '-password', administrator['xui_password'], '-port', '2053', '-webBasePath', administrator['xui_base_path']])
+    wait_xui_user(xui, administrator['login'])
     c.run(['docker', 'restart', '3x-ui'])
     db_password = c.password()
     pg = c.ROOT / 'config/postgres'

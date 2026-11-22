@@ -471,8 +471,17 @@ def security_commit(job):
     state = json.loads((job / 'security-state.json').read_text())
     if state.get('rolled_back'):
         raise RuntimeError('Сработал откат SSH; защита не подтверждена')
-    effective = c.run(['/usr/sbin/sshd', '-T']).stdout.decode().splitlines()
-    if 'passwordauthentication no' not in effective or 'authenticationmethods publickey' not in effective:
+    connection = os.environ.get('SSH_CONNECTION', '').split()
+    if len(connection) != 4:
+        raise RuntimeError('Подтверждение SSH требует нового SSH-соединения')
+    client_ip = str(ipaddress.ip_address(connection[0]))
+    server_ip = str(ipaddress.ip_address(connection[2]))
+    port = int(connection[3])
+    context = 'user=root,host=' + client_ip + ',addr=' + client_ip + ',laddr=' + server_ip + ',lport=' + str(port)
+    effective = c.run(['/usr/sbin/sshd', '-T', '-C', context]).stdout.decode().splitlines()
+    required = ['passwordauthentication no', 'kbdinteractiveauthentication no',
+                'pubkeyauthentication yes', 'authenticationmethods publickey']
+    if not all(value in effective for value in required):
         raise RuntimeError('SSH уже не находится в режиме входа только по ключу')
     c.run(['systemctl', 'stop', state['unit'] + '.timer'])
     state['committed'] = True

@@ -1,14 +1,17 @@
 import base64
+from contextlib import closing
 import io
 import json
 from pathlib import Path
 import shutil
+import sqlite3
 import subprocess
 import sys
 import tarfile
 import tempfile
 from types import SimpleNamespace
 import unittest
+import zipfile
 from unittest.mock import patch
 from urllib.parse import parse_qs, urlsplit
 
@@ -18,6 +21,8 @@ import migrate
 import remote
 import snapshot
 import stack
+import portable
+import build_portable
 
 
 class MigrationTests(unittest.TestCase):
@@ -172,6 +177,72 @@ class MigrationTests(unittest.TestCase):
         c.write(self.directory / 'security-state.json', {'rolled_back': True, 'unit': 'test'})
         with self.assertRaises(RuntimeError):
             remote.security_commit(self.directory)
+
+    def test_multicast_and_ip_instead_of_domain_are_rejected(self):
+        with self.assertRaises(ValueError):
+            c.validate_ip('224.0.0.1')
+        with self.assertRaises(ValueError):
+            c.validate_domain('8.8.8.8')
+
+    def test_ssh_commit_checks_root_match_context_before_canceling_timer(self):
+        c.write(self.directory / 'security-state.json', {'committed': False, 'unit': 'rollback-test'})
+        effective = b'passwordauthentication no\nkbdinteractiveauthentication no\npubkeyauthentication yes\nauthenticationmethods publickey\n'
+        with patch.dict('remote.os.environ', {'SSH_CONNECTION': '8.8.8.8 50000 1.1.1.1 22'}), \
+             patch.object(c, 'run', return_value=SimpleNamespace(stdout=effective)) as execute:
+            remote.security_commit(self.directory)
+        first = execute.call_args_list[0].args[0]
+        self.assertIn('-C', first)
+        self.assertIn('user=root', first[-1])
+        self.assertEqual(execute.call_args_list[1].args[0], ['systemctl', 'stop', 'rollback-test.timer'])
+        self.assertTrue(json.loads((self.directory / 'security-state.json').read_text())['committed'])
+
+    def test_bad_root_effective_config_keeps_rollback_timer(self):
+        c.write(self.directory / 'security-state.json', {'committed': False, 'unit': 'rollback-test'})
+        with patch.dict('remote.os.environ', {'SSH_CONNECTION': '8.8.8.8 50000 1.1.1.1 22'}), \
+             patch.object(c, 'run', return_value=SimpleNamespace(stdout=b'passwordauthentication yes\n')) as execute:
+            with self.assertRaises(RuntimeError):
+                remote.security_commit(self.directory)
+        self.assertEqual(execute.call_count, 1)
+        self.assertFalse(json.loads((self.directory / 'security-state.json').read_text())['committed'])
+
+    def test_xui_waits_for_actual_user_initialization(self):
+        def initialize(seconds):
+            with closing(sqlite3.connect(self.directory / 'x-ui.db')) as connection:
+                with connection:
+                    connection.execute('CREATE TABLE users (id INTEGER PRIMARY KEY, username TEXT)')
+                    connection.execute("INSERT INTO users(username) VALUES ('owner')")
+        with patch('stack.time.sleep', side_effect=initialize) as wait:
+            stack.wait_xui_user(self.directory, 'owner')
+        self.assertEqual(wait.call_count, 1)
+
+    def test_portable_package_is_deterministic_and_has_only_allowed_files(self):
+        first = build_portable.build(self.directory / 'first')
+        second = build_portable.build(self.directory / 'second')
+        self.assertEqual(first['sha256'], second['sha256'])
+        archive = self.directory / 'first/vps-migration.pyz'
+        with zipfile.ZipFile(archive) as package:
+            names = package.namelist()
+        self.assertEqual(set(names), {'__main__.py', 'manifest.json', *['payload/' + name for name in portable.FILES]})
+        self.assertFalse(any('private-vpn/' in name for name in names))
+        launcher = (self.directory / 'first/run.sh').read_text()
+        self.assertIn(first['sha256'], launcher)
+        self.assertIn(first['asset_url'], launcher)
+        self.assertNotIn('@PACKAGE_', launcher)
+
+    def test_portable_install_preserves_state_and_refuses_changed_code(self):
+        build_portable.build(self.directory / 'package')
+        archive = self.directory / 'package/vps-migration.pyz'
+        destination = self.directory / 'installation'
+        destination.mkdir()
+        portable.unpack(archive, destination)
+        state = destination / 'private-vpn/example.txt'
+        c.write(state, 'preserve me')
+        portable.unpack(archive, destination)
+        self.assertEqual(state.read_text(), 'preserve me')
+        source = destination / 'scripts/migration/migrate.py'
+        source.write_bytes(source.read_bytes() + b'\n')
+        with self.assertRaises(RuntimeError):
+            portable.unpack(archive, destination)
 
     @unittest.skipUnless(shutil.which('openssl'), 'OpenSSL is not installed locally')
     def test_x25519_public_derivation(self):
