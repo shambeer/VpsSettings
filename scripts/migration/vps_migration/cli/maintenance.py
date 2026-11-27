@@ -3,7 +3,7 @@ from pathlib import Path
 import shlex
 import time
 
-from vps_migration.cli import console as ui
+from vps_migration.cli import console as ui, session
 from vps_migration.core import common as c
 
 
@@ -73,10 +73,16 @@ def restart_if_needed(host, job, output):
         return
     if ask('Подтвердите: REBOOT ' + host.address) != 'REBOOT ' + host.address:
         raise RuntimeError('Перезагрузка отменена')
-    before = host.ssh('cat /proc/sys/kernel/random/boot_id', capture=True).strip()
-    c.write(directory / 'reboot-approval.json', {'confirm': 'REBOOT ' + host.address, 'boot_id': before.decode()})
+    approval = directory / 'reboot-approval.json'
+    if approval.exists():
+        before = json.loads(approval.read_text())['boot_id'].encode()
+    else:
+        before = host.ssh('cat /proc/sys/kernel/random/boot_id', capture=True).strip()
+        c.write(approval, {'confirm': 'REBOOT ' + host.address, 'boot_id': before.decode()})
     host.upload(directory / 'reboot-approval.json', job + '/reboot-approval.json')
-    action(host, job, 'maintenance-reboot')
+    current = host.ssh('cat /proc/sys/kernel/random/boot_id', capture=True, quiet=True).strip()
+    if current == before:
+        action(host, job, 'maintenance-reboot')
     deadline = time.monotonic() + 900
     print('[ВЫПОЛНЯЕТСЯ] Ожидание нового запуска сервера и SSH, до 15 минут...')
     while time.monotonic() < deadline:
@@ -131,7 +137,7 @@ def run(output):
     job = prepare(host, request, output)
     c.write(output / 'maintenance-operation.json', {'server_ip': host.address, 'remote_job': job, 'task': request['task']})
     if task == '1':
-        approve_os_updates(host, job, output)
+        session.checkpoint('os-approval:' + job + ':' + host.address, lambda: approve_os_updates(host, job, output))
     else:
         action(host, job, 'maintenance-plan')
         host.download(job + '/maintenance-plan.json', output / 'maintenance-plan.json')
@@ -179,5 +185,5 @@ def run(output):
     if host.ssh('id -u', capture=True).strip() != b'0':
         raise RuntimeError('Новый SSH-вход после обслуживания не подтверждён')
     if task == '1':
-        restart_if_needed(host, job, output)
+        session.checkpoint('reboot:' + host.address + ':' + job, lambda: restart_if_needed(host, job, output))
     print('Обслуживание завершено. Результаты и резервные копии: ' + str(output))

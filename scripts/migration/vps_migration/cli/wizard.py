@@ -14,7 +14,7 @@ import tarfile
 import uuid
 
 from vps_migration.core import common as c
-from vps_migration.cli import topology
+from vps_migration.cli import topology, session
 from vps_migration.cli import console as ui
 from vps_migration.packaging.portable import SERVER_FILES
 from vps_migration.cli.maintenance import approve_os_updates, restart_if_needed, download_backups
@@ -24,6 +24,8 @@ REPOSITORY = HERE.parent.parent
 
 
 def ask(prompt, default=None):
+    if session.ACTIVE:
+        return session.ACTIVE.prompt(prompt, default, ui.prompt)
     return ui.prompt(prompt, default)
 
 
@@ -86,8 +88,13 @@ def choose_output_directory(identifier):
         base = local_path(ask('Путь к папке на этом компьютере'))
     else:
         raise ValueError('Выберите 1, 2 или 3')
+    if session.ACTIVE and session.ACTIVE.path:
+        return session.ACTIVE.path.parent
     output = base / 'VpsMigration' / identifier
     output.mkdir(parents=True, mode=0o700, exist_ok=False)
+    if session.ACTIVE:
+        session.ACTIVE.attach(output)
+        print('Продолжение после закрытия: ' + session.ACTIVE.recovery_command(), flush=True)
     print('\nРезультаты будут сохранены в: ' + str(output), flush=True)
     print('Файл бэкапа: ' + str(output / 'migration-bundle.tar.gz'), flush=True)
     return output
@@ -131,14 +138,30 @@ class Connection:
         return process.stdout if capture else None
 
     def upload(self, source, destination):
-        arguments = ['scp', *self.options, '-P', str(self.port), str(source),
-                     'root@' + self.address + ':' + destination]
-        subprocess.run(arguments, check=True)
+        digest = c.checksum(Path(source))
+        def transfer():
+            temporary = destination + '.upload-part'
+            arguments = ['scp', *self.options, '-P', str(self.port), str(source),
+                         'root@' + self.address + ':' + temporary]
+            subprocess.run(arguments, check=True)
+            command = 'test "$(sha256sum ' + shlex.quote(temporary) + ' | cut -d " " -f 1)" = ' + digest
+            command += ' && chmod 600 ' + shlex.quote(temporary) + ' && mv -f ' + shlex.quote(temporary) + ' ' + shlex.quote(destination)
+            self.ssh(command)
+        session.checkpoint('upload:' + self.address + ':' + destination + ':' + digest, transfer)
 
     def download(self, source, destination):
+        destination = Path(destination)
+        temporary = destination.with_name(destination.name + '.download-part')
+        if temporary.is_symlink():
+            raise RuntimeError('Недопустимый временный путь скачивания')
+        digest = self.ssh('sha256sum ' + shlex.quote(source), capture=True).decode().split()[0]
         arguments = ['scp', *self.options, '-P', str(self.port),
-                     'root@' + self.address + ':' + source, str(destination)]
+                     'root@' + self.address + ':' + source, str(temporary)]
         subprocess.run(arguments, check=True)
+        temporary.chmod(0o600)
+        if c.checksum(temporary) != digest:
+            raise RuntimeError('Контрольная сумма скачанного файла не совпала; исходный файл сохранён')
+        temporary.replace(destination)
 
 
 def connection(label):
@@ -150,6 +173,16 @@ def connection(label):
 
 
 def prepare(remote, request, output):
+    key = 'prepare:' + remote.address + ':' + c_digest(request)
+    return session.checkpoint(key, lambda: prepare_files(remote, request, output))
+
+
+def c_digest(value):
+    import hashlib
+    return hashlib.sha256(json.dumps(value, sort_keys=True).encode()).hexdigest()
+
+
+def prepare_files(remote, request, output):
     print('\n[ВЫПОЛНЯЕТСЯ] Проверка SSH и загрузка файлов. SSH может запросить подтверждение отпечатка или пароль ключа.', flush=True)
     if remote.ssh('id -u', capture=True).strip() != b'0':
         raise RuntimeError('Требуется успешный вход root по указанному ключу')
@@ -171,16 +204,29 @@ def prepare(remote, request, output):
 
 
 def action(remote, job, name):
+    if name in ['harden', 'commit-ssh', 'maintenance-check']:
+        return action_command(remote, job, name)
+    return session.checkpoint('action:' + remote.address + ':' + job + ':' + name,
+                              lambda: action_command(remote, job, name))
+
+
+def action_command(remote, job, name):
     command = 'python3 ' + shlex.quote(job + '/remote.py') + ' ' + name + ' --job ' + shlex.quote(job)
     remote.ssh(command)
 
 
 def background_action(remote, job, name, result_name):
     unit = 'vps-' + name + '-' + job.rsplit('/', 1)[-1]
-    arguments = ['systemd-run', '--unit=' + unit, '--no-block', '--collect',
+    arguments = ['systemd-run', '--unit=' + unit, '--no-block',
                  '--property=UMask=0077', '--property=StandardOutput=append:' + job + '/' + name + '-console.log',
                  '--property=StandardError=inherit', '/usr/bin/python3', job + '/remote.py', name, '--job', job]
-    remote.ssh(shlex.join(arguments))
+    known = [job + '/' + result_name, job + '/' + name + '-error.json', job + '/' + name + '-execution.json']
+    checks = ' || '.join('test -f ' + shlex.quote(path) for path in known)
+    dispatch = 'if ' + checks + '; then exit 0; fi; '
+    dispatch += 'state=$(systemctl show ' + shlex.quote(unit) + ' -p LoadState --value); '
+    dispatch += 'if test "$state" = loaded; then exit 0; fi; ' + shlex.join(arguments)
+    launch = shlex.join(['flock', '-x', job + '/dispatch.lock', 'sh', '-c', dispatch])
+    attached = False
     print('Операция работает через systemd и продолжится при обрыве SSH.')
     if name == 'backup':
         print('Если интернет компьютера идёт через этот VPN, при необходимости переподключите его после восстановления сервиса.')
@@ -189,12 +235,25 @@ def background_action(remote, job, name, result_name):
     while time.monotonic() < deadline:
         command = 'if test -f ' + shlex.quote(job + '/' + result_name) + '; then cat ' + shlex.quote(job + '/' + result_name)
         command += '; elif test -f ' + shlex.quote(job + '/' + name + '-error.json') + '; then cat ' + shlex.quote(job + '/' + name + '-error.json')
+        command += '; elif systemctl is-failed --quiet ' + shlex.quote(unit) + '; then printf \'{"success":false,"error":"Серверная задача завершилась аварийно. Проверьте systemd journal."}\''
+        command += '; elif test -f ' + shlex.quote(job + '/' + name + '-execution.json') + ' && ! systemctl is-active --quiet ' + shlex.quote(unit) + '; then printf \'{"success":false,"error":"Серверная задача остановлена без результата; автоматический повтор запрещён. Проверьте её журнал и консоль VPS."}\''
         command += '; elif test -f ' + shlex.quote(job + '/progress.json') + '; then cat ' + shlex.quote(job + '/progress.json')
         command += '; else printf \'{"stage":"Ожидание запуска"}\'; fi'
         try:
-            status = json.loads(remote.ssh(command, capture=True, quiet=True))
-        except (RuntimeError, ValueError):
-            status = {'stage': 'SSH временно недоступен; серверная операция продолжается'}
+            if not attached:
+                remote.ssh(launch, quiet=True)
+                attached = True
+            response = remote.ssh(command, capture=True, quiet=True)
+        except RuntimeError:
+            attached = False
+            status = {'stage': 'Связь или запуск пока не подтверждены; восстанавливается наблюдение той же задачи'}
+        else:
+            try:
+                status = json.loads(response)
+            except ValueError as error:
+                raise RuntimeError('Повреждён результат серверной задачи; автоматическое продолжение остановлено') from error
+            if not isinstance(status, dict):
+                raise RuntimeError('Некорректный формат результата серверной задачи')
         if status.get('success') is True:
             return
         if status.get('success') is False:
@@ -205,6 +264,15 @@ def background_action(remote, job, name, result_name):
             last_status = stage
         time.sleep(5)
     raise RuntimeError('Истекло время наблюдения; задача может продолжаться. Проверить systemd unit ' + unit)
+
+
+def harden_connection(host, job):
+    def verify():
+        action(host, job, 'harden')
+        if host.ssh('id -u', capture=True).strip() != b'0':
+            raise RuntimeError('Новый SSH-вход не подтверждён; ожидается таймер отката')
+        action(host, job, 'commit-ssh')
+    session.checkpoint('security:' + host.address + ':' + job, verify)
 
 
 def bundle_from_source(output):
@@ -235,7 +303,24 @@ def bundle_from_source(output):
 def main():
     parser = argparse.ArgumentParser(description='Развёртывание и миграция VPN без передачи SSH-приватного ключа')
     parser.add_argument('--check', action='store_true', help='проверить локальные файлы; не подключаться к серверу')
+    parser.add_argument('--resume', type=Path, help='продолжить операцию из session.json')
     args = parser.parse_args()
+    state = session.Session(args.resume)
+    if args.resume:
+        if ui.prompt('Продолжить ранее согласованную операцию? Введите RESUME', None) != 'RESUME':
+            raise RuntimeError('Продолжение отменено')
+    with session.active(state):
+        try:
+            execute_wizard(args)
+            state.state['done'] = True
+            state.save()
+        except BaseException:
+            if state.path:
+                print('Продолжить эту операцию: ' + state.recovery_command(), file=sys.stderr)
+            raise
+
+
+def execute_wizard(args):
     if sys.version_info < (3, 11) or not hasattr(tarfile, 'data_filter'):
         raise RuntimeError('Нужен Python 3.11+ с актуальными исправлениями tarfile')
     if args.check:
@@ -321,9 +406,9 @@ def main():
         entry_job = prepare(entry, topology.relay_request(entry, target, request), output)
         topology.save_relay_instructions(output, entry, entry_job)
         action(entry, entry_job, 'relay-preflight')
-    approve_os_updates(target, job, output)
+    session.checkpoint('os-approval:' + job + ':' + target.address, lambda: approve_os_updates(target, job, output))
     if entry:
-        approve_os_updates(entry, entry_job, output)
+        session.checkpoint('os-approval:' + entry_job + ':' + entry.address, lambda: approve_os_updates(entry, entry_job, output))
     if bundle:
         target.upload(bundle, job + '/migration-bundle.tar.gz')
     backup_errors = []
@@ -334,15 +419,9 @@ def main():
         target.download(job + '/access-files.tar.gz', output / 'access-files.tar.gz')
         target.download(job + '/deploy-result.json', output / 'deploy-result.json')
         c.safe_extract(output / 'access-files.tar.gz', output / 'access')
-        action(target, job, 'harden')
-        if target.ssh('id -u', capture=True).strip() != b'0':
-            raise RuntimeError('Новый SSH-вход не подтверждён; через 180 секунд сработает откат SSH')
-        action(target, job, 'commit-ssh')
+        harden_connection(target, job)
         if entry:
-            action(entry, entry_job, 'harden')
-            if entry.ssh('id -u', capture=True).strip() != b'0':
-                raise RuntimeError('SSH-вход relay не подтверждён; ожидается автоматический откат SSH')
-            action(entry, entry_job, 'commit-ssh')
+            harden_connection(entry, entry_job)
     finally:
         for host, host_job in [(target, job), *([(entry, entry_job)] if entry else [])]:
             directory = output / ('os-' + host.address)
@@ -352,7 +431,7 @@ def main():
     if backup_errors:
         raise RuntimeError('Развёртывание завершено, но серверные резервные копии не все скачаны: ' + '; '.join(backup_errors))
     for host, host_job in [(target, job), *([(entry, entry_job)] if entry else [])]:
-        restart_if_needed(host, host_job, output)
+        session.checkpoint('reboot:' + host.address + ':' + host_job, lambda: restart_if_needed(host, host_job, output))
     c.write(output / 'security-result.json', {'key_login_verified_after_hardening': True,
             'password_login_disabled': True, 'fail2ban_sshd_enabled': True})
     print('\nГотово. Конфиги и строки:', output / 'access')

@@ -23,7 +23,7 @@ from vps_migration.core import common as c
 from vps_migration.server import snapshot
 from vps_migration.server import stack
 from vps_migration.server import relay
-from vps_migration.server import selfsteal
+from vps_migration.server import selfsteal, execution
 from vps_migration.server.maintenance import apt as system_apt, operations as maintenance
 
 
@@ -502,8 +502,22 @@ def security_prepare(request, job):
     if not isinstance(result, dict) or result.get('success') is not True:
         raise RuntimeError('SSH защищается только после успешной операции: ' + filename)
     connection = os.environ.get('SSH_CONNECTION', '').split()
-    if not connection:
+    if len(connection) != 4:
         raise RuntimeError('SSH_CONNECTION отсутствует; защита SSH должна запускаться через проверенный SSH')
+    saved = job / 'security-state.json'
+    original_backup = job / 'sshd_config.before'
+    if original_backup.exists():
+        state = json.loads(saved.read_text()) if saved.exists() else {'unit': 'vps-ssh-rollback-' + job.name}
+        if state.get('committed'):
+            return
+        c.run(['systemctl', 'stop', state['unit'] + '.timer', state['unit'] + '.service'], check=False)
+        rollback_ssh(job)
+        include = Path('/etc/ssh/vps-stack-key-only.conf')
+        if include.exists():
+            expected = 'PubkeyAuthentication yes\nPasswordAuthentication no\nKbdInteractiveAuthentication no\nAuthenticationMethods publickey\nPermitRootLogin prohibit-password\n'
+            if include.read_text() != expected:
+                raise RuntimeError('SSH include изменён вне операции; автоматическое восстановление остановлено')
+            include.unlink()
     client_ip = str(ipaddress.ip_address(connection[0]))
     server_ip = str(ipaddress.ip_address(connection[2]))
     ssh_port = int(connection[3])
@@ -520,16 +534,15 @@ def security_prepare(request, job):
     else:
         raise RuntimeError('Fail2ban sshd jail не запустился')
     main = Path('/etc/ssh/sshd_config')
-    if (job / 'sshd_config.before').exists():
-        raise RuntimeError('Защита SSH для этой операции уже запускалась')
-    c.write(job / 'sshd_config.before', main.read_bytes())
+    if not original_backup.exists():
+        c.write(original_backup, main.read_bytes())
     include = Path('/etc/ssh/vps-stack-key-only.conf')
     if include.exists():
         raise RuntimeError('SSH-конфигурация vps-stack уже существует')
     c.write(include, 'PubkeyAuthentication yes\nPasswordAuthentication no\nKbdInteractiveAuthentication no\nAuthenticationMethods publickey\nPermitRootLogin prohibit-password\n')
     original = main.read_bytes()
     c.write(main, b'Include /etc/ssh/vps-stack-key-only.conf\n' + original)
-    unit = 'vps-ssh-rollback-' + job.name
+    unit = 'vps-ssh-rollback-' + job.name + '-' + os.urandom(4).hex()
     c.write(job / 'security-state.json', {'unit': unit, 'committed': False})
     try:
         c.run(['/usr/sbin/sshd', '-t'])
@@ -861,7 +874,14 @@ def main():
 
 def run():
     try:
-        main()
+        if len(sys.argv) == 4 and sys.argv[1] in execution.TASKS and sys.argv[2] == '--job':
+            with execution.claim(Path(sys.argv[3]).resolve(), sys.argv[1]):
+                main()
+        else:
+            main()
+    except execution.AlreadyStarted as error:
+        print(str(error), file=sys.stderr)
+        sys.exit(1)
     except Exception as error:
         if c.JOB:
             c.write(c.JOB / (sys.argv[1] + '-error.json'), {'success': False, 'error': str(error)})

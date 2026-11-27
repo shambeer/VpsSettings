@@ -8,6 +8,7 @@ from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from vps_migration.cli import maintenance, wizard
+from vps_migration.core import common as c
 
 
 class MaintenanceCliTests(unittest.TestCase):
@@ -84,6 +85,17 @@ class MaintenanceCliTests(unittest.TestCase):
         self.assertEqual([call.args[2] for call in action.call_args_list], ['maintenance-reboot', 'maintenance-check'])
         approval = json.loads((self.directory / 'os-8.8.8.8/reboot-approval.json').read_text())
         self.assertEqual(approval, {'confirm': 'REBOOT 8.8.8.8', 'boot_id': 'old-boot'})
+    def test_resume_after_reboot_does_not_request_another_reboot(self):
+        directory = self.directory / 'os-8.8.8.8'
+        directory.mkdir()
+        c.write(directory / 'reboot-approval.json', {'confirm': 'REBOOT 8.8.8.8', 'boot_id': 'old-boot'})
+        self.host.download.side_effect = lambda source, target: Path(target).write_text(json.dumps({'reboot_required': True}))
+        self.host.ssh.side_effect = [b'new-boot', b'new-boot']
+        with patch.object(wizard, 'ask', side_effect=['1', 'REBOOT 8.8.8.8']), \
+             patch.object(wizard, 'action') as action, patch('sys.stdout', new_callable=io.StringIO):
+            maintenance.restart_if_needed(self.host, '/root/vps-transfer/test', self.directory)
+        self.assertEqual([call.args[2] for call in action.call_args_list], ['maintenance-check'])
+
 
 
 if __name__ == '__main__':

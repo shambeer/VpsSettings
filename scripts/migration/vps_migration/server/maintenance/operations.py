@@ -103,5 +103,9 @@ def schedule_reboot(request, job):
         raise RuntimeError('Перезагрузка разрешена только после успешного обновления, которое её требует')
     if approval.get('confirm') != 'REBOOT ' + request['ip'] or approval.get('boot_id') != current:
         raise RuntimeError('Перезагрузка не подтверждена для текущего сервера и запуска ОС')
-    c.run(['systemd-run', '--unit=vps-reboot-' + job.name, '--on-active=10s',
+    unit = 'vps-reboot-' + job.name
+    loaded = c.run(['systemctl', 'show', unit + '.timer', '-p', 'LoadState', '--value'], check=False).stdout.strip()
+    if loaded == b'loaded':
+        return
+    c.run(['systemd-run', '--unit=' + unit, '--on-active=10s',
            '/usr/bin/systemctl', 'reboot'])

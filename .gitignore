@@ -9,3 +9,7 @@ __pycache__/
 .agentsroom/transfer-context-*.txt
 .agentsroom/handoff-context-*.txt
 /.agentsroom/
+VpsMigration/
+session.json
+session.json.tmp
+session.lock

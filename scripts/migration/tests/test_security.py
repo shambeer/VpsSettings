@@ -55,6 +55,10 @@ class SecurityTests(unittest.TestCase):
             commands = [call.args[0] for call in execute.call_args_list]
             self.assertTrue(any(command[0] == 'systemd-run' and '--on-active=180s' in command for command in commands))
             self.assertNotIn(['systemctl', 'stop', state['unit'] + '.timer'], commands)
+            worker.rollback_ssh(job)
+            self.assertTrue(json.loads((job / 'security-state.json').read_text())['rolled_back'])
+            worker.security_prepare(request, job)
+            self.assertFalse(json.loads((job / 'security-state.json').read_text()).get('rolled_back', False))
             worker.security_commit(job)
             self.assertTrue(json.loads((job / 'security-state.json').read_text())['committed'])
             self.assertIn('PasswordAuthentication no', paths['/etc/ssh/vps-stack-key-only.conf'].read_text())
