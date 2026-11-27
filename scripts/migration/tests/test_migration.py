@@ -26,6 +26,18 @@ import build_portable
 
 
 class MigrationTests(unittest.TestCase):
+    def test_output_directory_choices_keep_backups_in_separate_operation_folders(self):
+        for choice, folder in [('1', 'Desktop'), ('2', 'Documents'), ('3', 'Custom')]:
+            base = self.directory / folder
+            with patch.object(migrate, 'ask', side_effect=[choice, '"' + str(base) + '"']), patch.object(migrate, 'user_folder', return_value=base) as known_folder, patch('sys.stdout', new_callable=io.StringIO):
+                output = migrate.choose_output_directory('operation-id')
+            self.assertEqual(output, base / 'VpsMigration/operation-id')
+            self.assertTrue(output.is_dir())
+            if choice != '3':
+                known_folder.assert_called_once_with(folder)
+        with patch.object(migrate, 'ask', return_value='4'), patch('sys.stdout', new_callable=io.StringIO), self.assertRaises(ValueError):
+            migrate.choose_output_directory('bad-choice')
+
     def test_prompts_explain_waiting_defaults_and_retry_required_input(self):
         with patch('builtins.input', side_effect=['', 'answer']), patch('sys.stdout', new_callable=io.StringIO) as output:
             self.assertEqual(migrate.ask('Required'), 'answer')

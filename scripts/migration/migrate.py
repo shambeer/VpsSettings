@@ -2,6 +2,7 @@ import argparse
 import datetime
 import ipaddress
 import json
+import os
 from pathlib import Path
 import re
 import shlex
@@ -40,6 +41,42 @@ def local_path(value):
     if len(value) >= 2 and value[0] == value[-1] and value[0] in ['"', "'"]:
         value = value[1:-1]
     return Path(value).expanduser().resolve()
+
+
+def user_folder(name):
+    if os.name == 'nt':
+        import winreg
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER,
+                            r'Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders') as key:
+            value = winreg.QueryValueEx(key, 'Desktop' if name == 'Desktop' else 'Personal')[0]
+        return Path(os.path.expandvars(value)).expanduser().resolve()
+    configuration = Path(os.environ.get('XDG_CONFIG_HOME', Path.home() / '.config')) / 'user-dirs.dirs'
+    if configuration.is_file():
+        variable = 'XDG_' + name.upper() + '_DIR'
+        for line in configuration.read_text(encoding='utf-8').splitlines():
+            key, separator, value = line.partition('=')
+            if separator and key.strip() == variable:
+                values = shlex.split(value)
+                if len(values) == 1:
+                    return local_path(values[0].replace('${HOME}', str(Path.home())).replace('$HOME', str(Path.home())))
+    return Path.home() / name
+
+
+def choose_output_directory(identifier):
+    print('\nГде сохранить бэкап, конфиги и результаты?', flush=True)
+    print('1 — Рабочий стол\n2 — Документы (по умолчанию)\n3 — Свой путь', flush=True)
+    choice = ask('Каталог сохранения', '2')
+    if choice in ['1', '2']:
+        base = user_folder('Desktop' if choice == '1' else 'Documents')
+    elif choice == '3':
+        base = local_path(ask('Путь к папке на этом компьютере'))
+    else:
+        raise ValueError('Выберите 1, 2 или 3')
+    output = base / 'VpsMigration' / identifier
+    output.mkdir(parents=True, mode=0o700, exist_ok=False)
+    print('\nРезультаты будут сохранены в: ' + str(output), flush=True)
+    print('Файл бэкапа: ' + str(output / 'migration-bundle.tar.gz'), flush=True)
+    return output
 
 
 class Connection:
@@ -183,8 +220,7 @@ def main():
     if mode not in ['1', '2', '3']:
         raise ValueError('Неизвестный режим')
     identifier = datetime.datetime.now().strftime('%Y%m%d-%H%M%S-') + uuid.uuid4().hex[:8]
-    output = REPOSITORY / 'private-vpn/server-settings/migrations' / identifier
-    output.mkdir(parents=True, mode=0o700)
+    output = choose_output_directory(identifier)
     if mode == '3':
         path = bundle_from_source(output)
         print('Копия сохранена:', path)

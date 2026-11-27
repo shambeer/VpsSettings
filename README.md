@@ -42,9 +42,9 @@ curl -fsSL https://github.com/shambeer/VpsMigration/releases/latest/download/run
 
 ### 4. Где будут конфиги и строки
 
-После запуска из исходников: private-vpn/server-settings/migrations/<дата-id>/access/. Внутри personal/ и shared/ раздельные каталоги configurations/ и strings/. Файлы admin/ и legacy/ не раздавать вместе с общим доступом.
+В начале выберите один из трёх вариантов: **1 — Рабочий стол, 2 — Документы (по умолчанию), 3 — свой путь**. На Windows учитываются системные перенаправления папок, включая OneDrive.
 
-У переносимого пакета та же структура находится в локальной папке его версии: Windows — LOCALAPPDATA/VpsSettings/migration/, Linux/WSL — ~/.local/share/VpsSettings/migration/ либо XDG_DATA_HOME/VpsSettings/migration/. Полный путь выводится в терминал. Это папки на компьютере, с которого запущен мигратор, а не публичный GitHub-репозиторий.
+Все файлы операции сохраняются в `<выбранная папка>/VpsMigration/<дата-id>/`. Бэкап — `migration-bundle.tar.gz`, рядом `backup-result.json` с SHA-256. Конфиги и строки — в `access/personal/` и `access/shared/`, внутри раздельные `configurations/` и `strings/`. `admin/` и `legacy/` не раздавать. Полный путь показывается до подключения к серверу и после завершения. Старые бэкапы не перемещаются.
 
 **Сквозная установка и восстановление на чистом VPS ещё не испытаны.** Сначала нужен пробный сервер и отдельный тестовый домен; не отключайте старый VPS до проверки нового. Создание копии временно останавливает выбранные сервисы.
 
