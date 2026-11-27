@@ -101,10 +101,12 @@ def remove():
 
 
 def install(request, job):
+    from vps_migration.server.maintenance import apt as system_apt
     preflight(request)
+    system_apt.apply_approved(job)
     os.environ['DEBIAN_FRONTEND'] = 'noninteractive'
     c.run(['apt-get', 'update'], timeout=900)
-    c.run(['apt-get', 'install', '-y', 'iptables', 'fail2ban', 'python3-systemd', 'unattended-upgrades'], timeout=900)
+    c.run(['apt-get', 'install', '-y', '--no-remove', 'iptables', 'fail2ban', 'python3-systemd', 'unattended-upgrades'], timeout=900)
     c.write(job / 'iptables-before.txt', c.run(['iptables-save']).stdout)
     previous = c.run(['sysctl', '-n', 'net.ipv4.ip_forward']).stdout.decode().strip()
     DIRECTORY.mkdir(mode=0o700)

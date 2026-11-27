@@ -9,6 +9,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from vps_migration.core import common as c
 from vps_migration.server import relay, worker
+from vps_migration.server.maintenance import apt as system_apt
 
 
 class SecurityTests(unittest.TestCase):
@@ -40,6 +41,7 @@ class SecurityTests(unittest.TestCase):
             output = effective if arguments[:2] == ['/usr/sbin/sshd', '-T'] else b'0\n'
             return SimpleNamespace(returncode=0, stdout=output, stderr=b'')
         with patch.object(relay, 'preflight'), patch.object(relay, 'DIRECTORY', self.directory / 'installed'), \
+             patch.object(system_apt, 'apply_approved'), \
              patch.object(relay, 'CONFIG', self.directory / 'relay.json'), \
              patch.object(c, 'write', side_effect=write), patch.object(c, 'run', side_effect=run) as execute, \
              patch.object(worker, 'Path', side_effect=lambda value: paths.get(str(value), Path(value))), \

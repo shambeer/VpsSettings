@@ -24,6 +24,7 @@ from vps_migration.server import snapshot
 from vps_migration.server import stack
 from vps_migration.server import relay
 from vps_migration.server import selfsteal
+from vps_migration.server.maintenance import apt as system_apt, operations as maintenance
 
 
 def progress(value):
@@ -83,10 +84,14 @@ def preflight(request, target=True):
 
 def packages():
     progress('Установка системных пакетов из репозитория ОС')
+    system_apt.apply_approved(c.JOB)
     os.environ['DEBIAN_FRONTEND'] = 'noninteractive'
     c.run(['apt-get', 'update'], timeout=900)
-    c.run(['apt-get', 'install', '-y', 'docker.io', 'openssl', 'ca-certificates', 'curl', 'ufw',
-           'fail2ban', 'python3-systemd', 'certbot', 'iproute2', 'kmod', 'unattended-upgrades'], timeout=1800)
+    dependencies = ['openssl', 'ca-certificates', 'curl', 'ufw', 'fail2ban', 'python3-systemd',
+                    'certbot', 'iproute2', 'kmod', 'unattended-upgrades']
+    if not shutil.which('docker'):
+        dependencies.append('docker.io')
+    c.run(['apt-get', 'install', '-y', '--no-remove', *dependencies], timeout=1800)
     c.run(['systemctl', 'enable', '--now', 'docker'])
     c.run(['systemctl', 'stop', 'certbot.timer'], check=False)
 
@@ -743,7 +748,8 @@ def verify_and_export(request, job):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('action', choices=['preflight', 'backup', 'deploy', 'harden', 'commit-ssh', 'rollback-ssh',
-                                          'relay-preflight', 'relay'])
+                                          'relay-preflight', 'relay', 'packages-plan', 'maintenance-plan',
+                                          'cleanup-preview', 'maintenance-apply', 'maintenance-check', 'maintenance-reboot'])
     parser.add_argument('--job', type=Path, required=True)
     arguments = parser.parse_args()
     job = arguments.job.resolve()
@@ -752,7 +758,8 @@ def main():
     c.JOB = job
     os.umask(0o077)
     operation_lock = None
-    if arguments.action in ['backup', 'deploy', 'relay']:
+    if arguments.action in ['backup', 'deploy', 'relay', 'packages-plan', 'maintenance-plan',
+                            'cleanup-preview', 'maintenance-apply', 'maintenance-check', 'maintenance-reboot']:
         import fcntl
         operation_lock = Path('/run/lock/vps-transfer.lock').open('a')
         try:
@@ -774,6 +781,22 @@ def main():
         return
     request = json.loads((job / 'request.json').read_text())
     c.validate_ip(request['ip'])
+    if arguments.action in ['packages-plan', 'maintenance-plan', 'cleanup-preview', 'maintenance-apply',
+                            'maintenance-check', 'maintenance-reboot']:
+        preflight(request, False)
+        if arguments.action == 'packages-plan':
+            maintenance.plan({**request, 'task': 'os'}, job)
+        elif arguments.action == 'maintenance-plan':
+            maintenance.plan(request, job)
+        elif arguments.action == 'cleanup-preview':
+            maintenance.preview_cleanup(job)
+        elif arguments.action == 'maintenance-apply':
+            maintenance.apply(request, job)
+        elif arguments.action == 'maintenance-check':
+            maintenance.check_after_reboot(request, job)
+        else:
+            maintenance.schedule_reboot(request, job)
+        return
     c.validate_domain(request['domain'])
     c.validate_domain(request['camouflage'])
     c.network_profile(request)

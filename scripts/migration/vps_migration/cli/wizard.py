@@ -17,6 +17,7 @@ from vps_migration.core import common as c
 from vps_migration.cli import topology
 from vps_migration.cli import console as ui
 from vps_migration.packaging.portable import SERVER_FILES
+from vps_migration.cli.maintenance import approve_os_updates, restart_if_needed, download_backups
 
 HERE = Path(__file__).resolve().parents[2]
 REPOSITORY = HERE.parent.parent
@@ -251,10 +252,15 @@ def main():
     print('При отметке [ОЖИДАНИЕ ВВОДА] программа ждёт ваш ответ после >. Отмена: Ctrl+C.', flush=True)
     ui.menu('Операция', [('1', 'Новая установка с личными и общими доступами'),
                         ('2', 'Перенос существующих доступов из полной резервной копии'),
-                        ('3', 'Только создать полную копию старого сервера')])
-    mode = ui.select('Выберите операцию', ['1', '2', '3'], '2', read=ask)
+                        ('3', 'Только создать полную копию старого сервера'),
+                        ('4', 'Обслуживание текущего VPS: пакеты ОС и очистка')])
+    mode = ui.select('Выберите операцию', ['1', '2', '3', '4'], '2', read=ask)
     identifier = datetime.datetime.now().strftime('%Y%m%d-%H%M%S-') + uuid.uuid4().hex[:8]
     output = choose_output_directory(identifier)
+    if mode == '4':
+        from vps_migration.cli.maintenance import run as maintain
+        maintain(output)
+        return
     if mode == '3':
         path = bundle_from_source(output)
         print('Копия сохранена:', path)
@@ -315,23 +321,38 @@ def main():
         entry_job = prepare(entry, topology.relay_request(entry, target, request), output)
         topology.save_relay_instructions(output, entry, entry_job)
         action(entry, entry_job, 'relay-preflight')
+    approve_os_updates(target, job, output)
+    if entry:
+        approve_os_updates(entry, entry_job, output)
     if bundle:
         target.upload(bundle, job + '/migration-bundle.tar.gz')
-    if entry:
-        background_action(entry, entry_job, 'relay', 'relay-result.json')
-    background_action(target, job, 'deploy', 'deploy-result.json')
-    target.download(job + '/access-files.tar.gz', output / 'access-files.tar.gz')
-    target.download(job + '/deploy-result.json', output / 'deploy-result.json')
-    c.safe_extract(output / 'access-files.tar.gz', output / 'access')
-    action(target, job, 'harden')
-    if target.ssh('id -u', capture=True).strip() != b'0':
-        raise RuntimeError('Новый SSH-вход не подтверждён; через 180 секунд сработает откат SSH')
-    action(target, job, 'commit-ssh')
-    if entry:
-        action(entry, entry_job, 'harden')
-        if entry.ssh('id -u', capture=True).strip() != b'0':
-            raise RuntimeError('SSH-вход relay не подтверждён; ожидается автоматический откат SSH')
-        action(entry, entry_job, 'commit-ssh')
+    backup_errors = []
+    try:
+        if entry:
+            background_action(entry, entry_job, 'relay', 'relay-result.json')
+        background_action(target, job, 'deploy', 'deploy-result.json')
+        target.download(job + '/access-files.tar.gz', output / 'access-files.tar.gz')
+        target.download(job + '/deploy-result.json', output / 'deploy-result.json')
+        c.safe_extract(output / 'access-files.tar.gz', output / 'access')
+        action(target, job, 'harden')
+        if target.ssh('id -u', capture=True).strip() != b'0':
+            raise RuntimeError('Новый SSH-вход не подтверждён; через 180 секунд сработает откат SSH')
+        action(target, job, 'commit-ssh')
+        if entry:
+            action(entry, entry_job, 'harden')
+            if entry.ssh('id -u', capture=True).strip() != b'0':
+                raise RuntimeError('SSH-вход relay не подтверждён; ожидается автоматический откат SSH')
+            action(entry, entry_job, 'commit-ssh')
+    finally:
+        for host, host_job in [(target, job), *([(entry, entry_job)] if entry else [])]:
+            directory = output / ('os-' + host.address)
+            directory.mkdir(mode=0o700, exist_ok=True)
+            failed = download_backups(host, host_job, directory) or []
+            backup_errors.extend(host.address + ": " + name for name in failed)
+    if backup_errors:
+        raise RuntimeError('Развёртывание завершено, но серверные резервные копии не все скачаны: ' + '; '.join(backup_errors))
+    for host, host_job in [(target, job), *([(entry, entry_job)] if entry else [])]:
+        restart_if_needed(host, host_job, output)
     c.write(output / 'security-result.json', {'key_login_verified_after_hardening': True,
             'password_login_disabled': True, 'fail2ban_sshd_enabled': True})
     print('\nГотово. Конфиги и строки:', output / 'access')

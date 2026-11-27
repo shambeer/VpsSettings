@@ -279,6 +279,7 @@ class MigrationTests(unittest.TestCase):
             return '/root/vps-transfer/' + request['mode']
         with patch('sys.argv', ['migrate.py']), patch('builtins.input', side_effect=answers), \
              patch('sys.stdout', new_callable=io.StringIO), patch.object(migrate, 'prepare', side_effect=prepare), \
+             patch.object(migrate, 'approve_os_updates'), patch.object(migrate, 'restart_if_needed'), patch.object(migrate, 'download_backups'), \
              patch.object(migrate, 'action') as action, patch.object(migrate, 'background_action',
                 side_effect=lambda host, job, operation, result: operations.append((host.address, operation))), \
              patch.object(migrate.Connection, 'ssh', return_value=b'0'), \
