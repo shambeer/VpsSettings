@@ -14,7 +14,7 @@ from vps_migration.core import common as c
 from vps_migration.core.selfsteal_options import validate
 from vps_migration.server import selfsteal, relay
 from vps_migration.server.selfsteal_features import install, profiles, subscriptions, warp, certificates
-from vps_migration.cli.selfsteal import site_archive
+from vps_migration.cli.selfsteal import site_archive, choose_warp
 
 
 class FullSelfStealTests(unittest.TestCase):
@@ -258,6 +258,15 @@ class FullSelfStealTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'challenge failed'):
                 certificates.configure(self.request)
         self.assertFalse(any('--force-renewal' in call.args[0] for call in execute.call_args_list))
+
+    def test_separate_warp_step_requires_confirmation_and_supports_opt_out(self):
+        for answers, expected in [(['1', 'WARP 1.1.1.1'], True), (['2'], False)]:
+            read = Mock(side_effect=answers)
+            with patch('sys.stdout', new_callable=io.StringIO):
+                self.assertEqual(choose_warp('1.1.1.1', {'warp': True}, read), expected)
+            self.assertEqual(read.call_count, len(answers))
+        with patch('sys.stdout', new_callable=io.StringIO), self.assertRaises(RuntimeError):
+            choose_warp('1.1.1.1', {'warp': True}, Mock(side_effect=['1', 'NO']))
 
     def test_custom_site_archive_is_local_and_checksum_protected(self):
         site = self.root / 'site'

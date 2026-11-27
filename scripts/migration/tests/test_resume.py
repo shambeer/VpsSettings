@@ -121,7 +121,10 @@ class ResumeTests(unittest.TestCase):
                 key.write_text('FAKE KEY')
                 answers = ['1', '3', str(folder / 'results'), '8.8.8.8', '22', str(key),
                            '2', '1.1.1.1', '2222', str(key), 'entry.example.org', 'mask.example.org',
-                           '2', 'firefox', '', 'DEPLOY 8.8.8.8', 'RELAY 1.1.1.1']
+                           '2', 'firefox', '', '1', 'WARP 8.8.8.8', 'DEPLOY 8.8.8.8', 'RELAY 1.1.1.1']
+                if interrupted == 'relay':
+                    offset = answers.index('WARP 8.8.8.8')
+                    answers[offset - 1:offset + 1] = ['2']
                 created, finished = [], set()
                 disconnected = False
                 def prepare(host, request, output):

@@ -97,7 +97,7 @@ class Session:
             value = row['value']
         else:
             value = read(prompt, default)
-            confirmation = re.search(r'\b(?:BACKUP|DEPLOY|RELAY|PLAN|UPGRADE|DELETE|REBOOT) (?:\d{1,3}\.){3}\d{1,3}', prompt)
+            confirmation = re.search(r'\b(?:BACKUP|DEPLOY|RELAY|PLAN|UPGRADE|DELETE|REBOOT|WARP) (?:\d{1,3}\.){3}\d{1,3}', prompt)
             if confirmation and value != confirmation.group():
                 return value
             self.state['prompts'].append({'prompt': prompt, 'default': default, 'value': value})

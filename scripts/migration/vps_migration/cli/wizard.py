@@ -373,7 +373,7 @@ def execute_wizard(args):
     target = connection('Новый сервер: только чистая установка, Ubuntu/Debian, root и Python 3.11+')
     scheme, entry = topology.choose(connection, ask, target)
     scheme.update(topology.bundle_settings(bundle, scheme))
-    scheme['selfsteal_options'] = session.ACTIVE.state['selfsteal_options'] if session.ACTIVE else {}
+    scheme['selfsteal_options'] = dict(session.ACTIVE.state['selfsteal_options']) if session.ACTIVE else {}
     for option, setting in [('tls_port', 'selfsteal_port'), ('reality_port', 'selfsteal_reality_port')]:
         if option in scheme['selfsteal_options']:
             port = scheme['selfsteal_options'][option]
@@ -396,6 +396,11 @@ def execute_wizard(args):
     email = ask('Email для Let’s Encrypt, можно оставить пустым', '')
     if email and (not re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+', email) or email.startswith('-')):
         raise ValueError('Некорректный email')
+    warp_accepted = False
+    if scheme.get('full_selfsteal'):
+        from vps_migration.cli.selfsteal import choose_warp
+        warp_accepted = choose_warp(target.address, scheme['selfsteal_options'], ask)
+        scheme['selfsteal_options']['warp'] = warp_accepted
     ui.section('Проверка плана перед изменениями')
     print('Будут установлены Docker, VPN, 3x-ui/3DP, Fail2ban, firewall и Certbot.')
     print('Протоколы: XRay, AmneziaWG, Telegram MTProxy, WireGuard, OpenVPN, Shadowsocks, Hysteria2.')
@@ -409,7 +414,9 @@ def execute_wizard(args):
         if scheme['selfsteal_options'].get('reality', True):
             print('Дополнительный TCP-порт REALITY: ' + str(c.selfsteal_reality_port(scheme)))
         if scheme['selfsteal_options'].get('warp', True):
-            print('DEPLOY также разрешает регистрацию WARP по условиям Cloudflare: https://www.cloudflare.com/application/terms/')
+            print('WARP: включён, отдельное согласие получено. Amnezia через Cloudflare не направляется.')
+        else:
+            print('WARP: выключен; регистрации в Cloudflare не будет.')
     if entry:
         print('Relay будет пересылать TCP/UDP без расшифровки; дополнительный участок может увеличить задержку.')
     print('Подтверждение также означает согласие с условиями Let’s Encrypt: https://letsencrypt.org/repository/')
@@ -420,7 +427,7 @@ def execute_wizard(args):
     request = {'mode': 'fresh' if mode == '1' else 'restore', 'ip': target.address, 'domain': domain,
                'camouflage': camouflage, 'email': email, 'acme_agreed': True, 'ssh_port': target.port,
                'network_profile': network_profile, 'fingerprint': selected_fingerprint,
-               'warp_terms_accepted': scheme['selfsteal_options'].get('warp', True), **scheme}
+               'warp_terms_accepted': warp_accepted, **scheme}
     from vps_migration.cli.selfsteal import site_archive
     site = site_archive(output, scheme['selfsteal_options'])
     if site:

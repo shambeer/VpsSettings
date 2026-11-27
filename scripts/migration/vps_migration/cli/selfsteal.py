@@ -15,6 +15,24 @@ def options(path):
     return result
 
 
+def choose_warp(address, settings, read):
+    from vps_migration.cli import console as ui
+    ui.section('Cloudflare WARP — отдельный выход по желанию')
+    print('Маршрут: устройство → ваш VPS → Cloudflare → сайт. Только профили WARP используют этот выход.')
+    print('Регистрация устройства выполняется автоматически; аккаунт, почта и перенос домена не нужны.')
+    print('Amnezia и обычные профили сохраняют свой маршрут. Скорость зависит от дополнительного пути.')
+    ui.menu('Подключать WARP?', [('1', 'Добавить WARP-профили и разрешить регистрацию устройства'),
+                                ('2', 'Без WARP и без регистрации в Cloudflare')])
+    default = '1' if settings.get('warp', True) else '2'
+    choice = ui.select('Выберите вариант WARP', ['1', '2'], default, read=read)
+    if choice == '2':
+        return False
+    print('Условия Cloudflare: https://www.cloudflare.com/application/terms/')
+    if read('Для согласия с регистрацией и условиями введите WARP ' + address) != 'WARP ' + address:
+        raise RuntimeError('Регистрация WARP не подтверждена; установка не начата')
+    return True
+
+
 def site_archive(output, settings):
     if not settings.get('site_directory'):
         return None

@@ -271,7 +271,7 @@ class MigrationTests(unittest.TestCase):
         key.write_text('FAKE LOCAL KEY')
         answers = ['1', '3', str(self.directory / 'results'), '8.8.8.8', '22', str(key),
                    '2', '1.1.1.1', '2222', str(key), 'entry.example.org', 'mask.example.org',
-                   '2', 'firefox', '', 'DEPLOY 8.8.8.8', 'RELAY 1.1.1.1']
+                   '2', 'firefox', '', '1', 'WARP 8.8.8.8', 'DEPLOY 8.8.8.8', 'RELAY 1.1.1.1']
         operations = []
         def prepare(host, request, output):
             self.assertNotIn('key', request)
@@ -297,7 +297,7 @@ class MigrationTests(unittest.TestCase):
         key.write_text('FAKE LOCAL KEY')
         answers = ['1', '3', str(self.directory / 'cancel'), '8.8.8.8', '22', str(key),
                    '2', '1.1.1.1', '2222', str(key), 'entry.example.org', 'mask.example.org',
-                   '2', 'firefox', '', 'DEPLOY 8.8.8.8', 'NO']
+                   '2', 'firefox', '', '1', 'WARP 8.8.8.8', 'DEPLOY 8.8.8.8', 'NO']
         with patch('sys.argv', ['migrate.py']), patch('builtins.input', side_effect=answers), \
              patch('sys.stdout', new_callable=io.StringIO), patch.object(migrate, 'prepare') as prepare, \
              patch.object(migrate.shutil, 'which', return_value='tool'), self.assertRaises(RuntimeError):
