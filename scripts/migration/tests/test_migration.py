@@ -304,6 +304,26 @@ class MigrationTests(unittest.TestCase):
             migrate.main()
         prepare.assert_not_called()
 
+    def test_all_inclusive_preset_keeps_warp_optional_and_requires_deploy(self):
+        for topology_choice in ['1', '2']:
+            with self.subTest(topology=topology_choice):
+                key = self.directory / ('preset-key-' + topology_choice)
+                key.write_text('FAKE LOCAL KEY')
+                answers = ['5', '1', '3', str(self.directory / ('preset-' + topology_choice)),
+                           '8.8.8.8', '22', str(key), topology_choice]
+                if topology_choice == '2':
+                    answers.extend(['1.1.1.1', '22', str(key)])
+                answers.extend(['entry.example.org', 'mask.example.org', 'firefox', '', '2', 'NO'])
+                with patch('sys.argv', ['migrate.py']), patch('builtins.input', side_effect=answers), \
+                     patch('sys.stdout', new_callable=io.StringIO) as output, \
+                     patch.object(migrate, 'prepare') as prepare, \
+                     patch.object(migrate.shutil, 'which', return_value='tool'), self.assertRaises(RuntimeError):
+                    migrate.main()
+                prepare.assert_not_called()
+                self.assertIn('Сетевой профиль: all', output.getvalue())
+                self.assertIn('WARP: выключен', output.getvalue())
+                self.assertIn('Дополнительный TCP-порт REALITY', output.getvalue())
+
     def test_backup_failure_starts_source_containers_again(self):
         container = {'Id': 'source-id', 'Name': '/amnezia-xray', 'State': {'Running': True},
                      'Image': 'image-id', 'Mounts': [], 'NetworkSettings': {'Networks': {'bridge': {}}}}

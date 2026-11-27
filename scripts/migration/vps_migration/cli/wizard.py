@@ -344,8 +344,15 @@ def execute_wizard(args):
     ui.menu('Операция', [('1', 'Новая установка с личными и общими доступами'),
                         ('2', 'Перенос существующих доступов из полной резервной копии'),
                         ('3', 'Только создать полную копию старого сервера'),
-                        ('4', 'Обслуживание текущего VPS: пакеты ОС и очистка')])
-    mode = ui.select('Выберите операцию', ['1', '2', '3', '4'], '2', read=ask)
+                        ('4', 'Обслуживание текущего VPS: пакеты ОС и очистка'),
+                        ('5', 'Всё включено — полный набор с выбором одного или двух серверов')])
+    mode = ui.select('Выберите операцию', ['1', '2', '3', '4', '5'], '2', read=ask)
+    all_inclusive = mode == '5'
+    if all_inclusive:
+        ui.section('Всё включено')
+        print('Amnezia имеет приоритет; новые способы, резервные VPN, панели и подписки включены.')
+        print('WARP, обновления ОС, перезагрузка и удаление требуют отдельных подтверждений.')
+        mode = ui.select('1 — Новая установка; 2 — сохранить доступы из полной копии', ['1', '2'], '1', read=ask)
     identifier = datetime.datetime.now().strftime('%Y%m%d-%H%M%S-') + uuid.uuid4().hex[:8]
     output = choose_output_directory(identifier)
     if mode == '4':
@@ -374,6 +381,8 @@ def execute_wizard(args):
     scheme, entry = topology.choose(connection, ask, target)
     scheme.update(topology.bundle_settings(bundle, scheme))
     scheme['selfsteal_options'] = dict(session.ACTIVE.state['selfsteal_options']) if session.ACTIVE else {}
+    if all_inclusive:
+        scheme['selfsteal_options'].update({'reality': True, 'subscriptions': True})
     for option, setting in [('tls_port', 'selfsteal_port'), ('reality_port', 'selfsteal_reality_port')]:
         if option in scheme['selfsteal_options']:
             port = scheme['selfsteal_options'][option]
@@ -387,10 +396,14 @@ def execute_wizard(args):
     public_ip = entry.address if entry else target.address
     domain = c.validate_domain(ask('Домен входа; заранее направьте A-запись только на ' + public_ip))
     camouflage = c.validate_domain(ask('HTTPS-сайт для новых REALITY/Telegram-конфигов: TLS 1.3 и HTTP/2, не домен этого VPS', ''))
-    ui.menu('Публикация портов', [('1', 'TCP 443 Amnezia + отдельный порт новых способов; остальные локальны'),
-                                ('2', 'Сохранить доступность старых VPN-портов и панели 3DP')])
-    profile_choice = ui.select('Сетевой профиль', ['1', '2'], '2' if scheme['self_steal'] else '1', read=ask)
-    network_profile = 'filtered' if profile_choice == '1' else 'all'
+    if all_inclusive:
+        network_profile = 'all'
+        print('Всё включено: публикуются VPN-порты и панель 3DP; 3x-ui доступна через SSH-туннель.')
+    else:
+        ui.menu('Публикация портов', [('1', 'TCP 443 Amnezia + отдельный порт новых способов; остальные локальны'),
+                                    ('2', 'Сохранить доступность старых VPN-портов и панели 3DP')])
+        profile_choice = ui.select('Сетевой профиль', ['1', '2'], '2' if scheme['self_steal'] else '1', read=ask)
+        network_profile = 'filtered' if profile_choice == '1' else 'all'
     selected_fingerprint = ask('TLS fingerprint клиента REALITY: firefox или safari', 'firefox')
     c.fingerprint({'fingerprint': selected_fingerprint})
     email = ask('Email для Let’s Encrypt, можно оставить пустым', '')
@@ -402,6 +415,8 @@ def execute_wizard(args):
         warp_accepted = choose_warp(target.address, scheme['selfsteal_options'], ask)
         scheme['selfsteal_options']['warp'] = warp_accepted
     ui.section('Проверка плана перед изменениями')
+    if all_inclusive:
+        print('Набор: Всё включено. При восстановлении основные приложения и панели берутся из копии.')
     print('Будут установлены Docker, VPN, 3x-ui/3DP, Fail2ban, firewall и Certbot.')
     print('Протоколы: XRay, AmneziaWG, Telegram MTProxy, WireGuard, OpenVPN, Shadowsocks, Hysteria2.')
     print('Приватный SSH-ключ останется на этом компьютере. Парольный вход отключится после проверки ключа.')
