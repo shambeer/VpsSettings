@@ -1,7 +1,7 @@
-import common as c
+from vps_migration.core import common as c
 import json
 import tarfile
-import console as ui
+from vps_migration.cli import console as ui
 
 
 def choose(connect, ask, target):

@@ -11,7 +11,7 @@ import tarfile
 import time
 from urllib.parse import quote
 
-import common as c
+from vps_migration.core import common as c
 
 
 def selected():

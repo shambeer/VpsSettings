@@ -6,7 +6,7 @@ import re
 import shutil
 import shlex
 
-import common as c
+from vps_migration.core import common as c
 
 DIRECTORY = Path('/opt/vps-relay')
 CONFIG = Path('/etc/vps-relay.json')
@@ -108,14 +108,15 @@ def install(request, job):
     c.write(job / 'iptables-before.txt', c.run(['iptables-save']).stdout)
     previous = c.run(['sysctl', '-n', 'net.ipv4.ip_forward']).stdout.decode().strip()
     DIRECTORY.mkdir(mode=0o700)
-    for name in ['relay.py', 'common.py']:
-        c.write(DIRECTORY / name, Path(__file__).with_name(name).read_bytes())
+    package = Path(__file__).resolve().parents[1]
+    for name in ['__init__.py', 'core/__init__.py', 'core/common.py', 'server/__init__.py', 'server/relay.py']:
+        c.write(DIRECTORY / 'vps_migration' / name, (package / name).read_bytes())
     c.write(CONFIG, request)
     c.write(DIRECTORY / 'previous-forwarding.json', {'ip_forward': previous})
     unit = ('[Unit]\nDescription=Managed VPN relay forwarding\nAfter=network-online.target\nWants=network-online.target\n'
-            '[Service]\nType=oneshot\nRemainAfterExit=yes\n'
-            'ExecStart=/usr/bin/python3 /opt/vps-relay/relay.py apply\n'
-            'ExecStop=/usr/bin/python3 /opt/vps-relay/relay.py remove\n[Install]\nWantedBy=multi-user.target\n')
+            '[Service]\nType=oneshot\nRemainAfterExit=yes\nWorkingDirectory=/opt/vps-relay\n'
+            'ExecStart=/usr/bin/python3 -m vps_migration.server.relay apply\n'
+            'ExecStop=/usr/bin/python3 -m vps_migration.server.relay remove\n[Install]\nWantedBy=multi-user.target\n')
     c.write('/etc/systemd/system/vps-relay.service', unit)
     c.run(['systemctl', 'daemon-reload'])
     try:

@@ -8,7 +8,7 @@ import time
 from urllib.parse import quote, urlencode
 import uuid
 
-import common as c
+from vps_migration.core import common as c
 
 IMAGES = {
     'xray': 'ghcr.io/xtls/xray-core:latest',

@@ -10,11 +10,11 @@ import unittest
 from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import common as c
-import relay
-import topology
-import console as ui
-import remote
+from vps_migration.core import common as c
+from vps_migration.server import relay
+from vps_migration.cli import topology
+from vps_migration.cli import console as ui
+from vps_migration.server import worker as remote
 
 
 class RelayTests(unittest.TestCase):

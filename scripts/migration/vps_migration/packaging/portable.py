@@ -6,9 +6,15 @@ import subprocess
 import sys
 import zipfile
 
+SERVER_FILES = ['remote.py', 'vps_migration/__init__.py',
+                'vps_migration/core/__init__.py', 'vps_migration/core/common.py',
+                'vps_migration/server/__init__.py', *['vps_migration/server/' + name for name in [
+                    'worker.py', 'stack.py', 'snapshot.py', 'relay.py', 'selfsteal.py']]]
+LOCAL_FILES = ['migrate.py', 'vps_migration/cli/__init__.py', 'vps_migration/cli/wizard.py',
+               'vps_migration/cli/console.py', 'vps_migration/cli/topology.py',
+               'vps_migration/packaging/__init__.py', 'vps_migration/packaging/portable.py']
 FILES = ['.gitignore', *['scripts/migration/' + name for name in [
-    'common.py', 'migrate.py', 'remote.py', 'snapshot.py', 'stack.py', 'relay.py', 'selfsteal.py', 'topology.py', 'console.py',
-    'README.md', 'deploy.ps1', 'deploy.sh']]]
+    *SERVER_FILES, *LOCAL_FILES, 'README.md', 'deploy.ps1', 'deploy.sh']]]
 
 
 def installation_directory(archive):

@@ -4,8 +4,8 @@ import secrets
 from urllib.parse import quote, urlencode
 import uuid
 
-import common as c
-import stack
+from vps_migration.core import common as c
+from vps_migration.server import stack
 
 NAMES = ['vpn-selfsteal-xray', 'vpn-selfsteal-site', 'vpn-selfsteal-hysteria2', 'vpn-edge']
 

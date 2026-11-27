@@ -8,8 +8,8 @@ from unittest.mock import patch
 from urllib.parse import parse_qs, urlsplit
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import common as c
-import selfsteal
+from vps_migration.core import common as c
+from vps_migration.server import selfsteal
 
 
 class SelfStealTests(unittest.TestCase):
@@ -73,7 +73,7 @@ class SelfStealTests(unittest.TestCase):
             self.assertNotEqual(personal['outbounds'][0]['settings'], shared['outbounds'][0]['settings'])
 
     def test_partial_restoration_is_not_silently_replaced(self):
-        with patch('stack.exists', side_effect=lambda name: name == 'vpn-edge'), self.assertRaises(RuntimeError):
+        with patch('vps_migration.server.stack.exists', side_effect=lambda name: name == 'vpn-edge'), self.assertRaises(RuntimeError):
             selfsteal.install(self.request)
 
     def test_addition_keeps_legacy_configuration_and_publishes_only_entry_containers(self):
@@ -82,8 +82,8 @@ class SelfStealTests(unittest.TestCase):
         legacy = {'HostConfig': {'PortBindings': {'443/tcp': [{'HostIp': '127.0.0.1', 'HostPort': '1443'}]}},
                   'NetworkSettings': {'Networks': {'vps-stack-network': {}}}}
         with tempfile.TemporaryDirectory(dir=parent) as directory, patch.object(c, 'ROOT', Path(directory)), \
-             patch('stack.exists', return_value=False), patch('stack.network'), patch('stack.image', return_value='image'), \
-             patch('stack.create') as create, patch.object(c, 'docker_json', return_value=[legacy]):
+             patch('vps_migration.server.stack.exists', return_value=False), patch('vps_migration.server.stack.network'), patch('vps_migration.server.stack.image', return_value='image'), \
+             patch('vps_migration.server.stack.create') as create, patch.object(c, 'docker_json', return_value=[legacy]):
             original = {'inbounds': [{'port': 443, 'protocol': 'vless', 'settings': {'clients': [{'id': 'old-id'}]},
                         'streamSettings': {'network': 'tcp', 'security': 'reality', 'realitySettings': {'serverNames': ['mask.example.org']}}}]}
             path = c.ROOT / 'config/xray/server.json'

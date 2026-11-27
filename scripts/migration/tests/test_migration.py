@@ -16,13 +16,13 @@ from unittest.mock import patch
 from urllib.parse import parse_qs, urlsplit
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import common as c
-import migrate
-import remote
-import snapshot
-import stack
-import portable
-import build_portable
+from vps_migration.core import common as c
+from vps_migration.cli import wizard as migrate
+from vps_migration.server import worker as remote
+from vps_migration.server import snapshot
+from vps_migration.server import stack
+from vps_migration.packaging import portable
+from vps_migration.packaging import build as build_portable
 
 
 class MigrationTests(unittest.TestCase):
@@ -229,7 +229,7 @@ class MigrationTests(unittest.TestCase):
         key = self.directory / 'key'
         key.write_text('FAKE TEST KEY')
         connection = migrate.Connection('8.8.8.8', 2222, key)
-        with patch('migrate.subprocess.run', return_value=SimpleNamespace(returncode=0, stdout=b'0')) as execute:
+        with patch('vps_migration.cli.wizard.subprocess.run', return_value=SimpleNamespace(returncode=0, stdout=b'0')) as execute:
             connection.ssh('id -u', capture=True)
         arguments = execute.call_args.args[0]
         self.assertIn('IdentitiesOnly=yes', arguments)
@@ -312,10 +312,10 @@ class MigrationTests(unittest.TestCase):
             if arguments[:2] == ['docker', 'stop']:
                 raise RuntimeError('simulated stop failure')
             return SimpleNamespace(returncode=0, stdout=b'')
-        with patch('snapshot.selected', return_value=[container]), patch('snapshot.host_roots', return_value=[]), \
+        with patch('vps_migration.server.snapshot.selected', return_value=[container]), patch('vps_migration.server.snapshot.host_roots', return_value=[]), \
              patch.object(c, 'run', side_effect=execute), patch.object(c, 'api', return_value=[{'Id': 'source-id'}]), \
              patch.object(c, 'docker_json', return_value=[{'Size': 1}]), \
-             patch('snapshot.shutil.disk_usage', return_value=SimpleNamespace(free=1024 ** 4)):
+             patch('vps_migration.server.snapshot.shutil.disk_usage', return_value=SimpleNamespace(free=1024 ** 4)):
             with self.assertRaises(RuntimeError):
                 snapshot.backup({'ip': '8.8.8.8', 'domain': 'old.example.org'}, self.directory)
         self.assertIn(['docker', 'start', 'amnezia-xray'], calls)
@@ -354,7 +354,7 @@ class MigrationTests(unittest.TestCase):
     def test_ssh_commit_checks_root_match_context_before_canceling_timer(self):
         c.write(self.directory / 'security-state.json', {'committed': False, 'unit': 'rollback-test'})
         effective = b'passwordauthentication no\nkbdinteractiveauthentication no\npubkeyauthentication yes\nauthenticationmethods publickey\n'
-        with patch.dict('remote.os.environ', {'SSH_CONNECTION': '8.8.8.8 50000 1.1.1.1 22'}), \
+        with patch.dict('vps_migration.server.worker.os.environ', {'SSH_CONNECTION': '8.8.8.8 50000 1.1.1.1 22'}), \
              patch.object(c, 'run', return_value=SimpleNamespace(stdout=effective)) as execute:
             remote.security_commit(self.directory)
         first = execute.call_args_list[0].args[0]
@@ -365,7 +365,7 @@ class MigrationTests(unittest.TestCase):
 
     def test_bad_root_effective_config_keeps_rollback_timer(self):
         c.write(self.directory / 'security-state.json', {'committed': False, 'unit': 'rollback-test'})
-        with patch.dict('remote.os.environ', {'SSH_CONNECTION': '8.8.8.8 50000 1.1.1.1 22'}), \
+        with patch.dict('vps_migration.server.worker.os.environ', {'SSH_CONNECTION': '8.8.8.8 50000 1.1.1.1 22'}), \
              patch.object(c, 'run', return_value=SimpleNamespace(stdout=b'passwordauthentication yes\n')) as execute:
             with self.assertRaises(RuntimeError):
                 remote.security_commit(self.directory)
@@ -378,7 +378,7 @@ class MigrationTests(unittest.TestCase):
                 with connection:
                     connection.execute('CREATE TABLE users (id INTEGER PRIMARY KEY, username TEXT)')
                     connection.execute("INSERT INTO users(username) VALUES ('owner')")
-        with patch('stack.time.sleep', side_effect=initialize) as wait:
+        with patch('vps_migration.server.stack.time.sleep', side_effect=initialize) as wait:
             stack.wait_xui_user(self.directory, 'owner')
         self.assertEqual(wait.call_count, 1)
 
@@ -402,6 +402,30 @@ class MigrationTests(unittest.TestCase):
         self.assertIn('finally', powershell)
         self.assertIn('Remove-Item -LiteralPath $packagePath', powershell)
         self.assertEqual(first['release_assets'], ['vps-migration.pyz', 'vps-migration.pyz.sha256', 'run.sh', 'run.ps1'])
+
+    def test_server_upload_contains_every_dependency_without_local_cli(self):
+        directory = self.directory / 'remote-worker'
+        for name in portable.SERVER_FILES:
+            target = directory / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(self.repository / 'scripts/migration' / name, target)
+        result = subprocess.run([sys.executable, str(directory / 'remote.py'), '--help'],
+                                cwd=directory, capture_output=True, text=True, timeout=20)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('relay-preflight', result.stdout)
+        self.assertFalse((directory / 'vps_migration/cli').exists())
+
+    def test_persistent_relay_imports_as_a_minimal_package(self):
+        directory = self.directory / 'persistent-relay'
+        names = ['__init__.py', 'core/__init__.py', 'core/common.py', 'server/__init__.py', 'server/relay.py']
+        for name in names:
+            target = directory / 'vps_migration' / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(self.repository / 'scripts/migration/vps_migration' / name, target)
+        result = subprocess.run([sys.executable, '-m', 'vps_migration.server.relay', '--help'],
+                                cwd=directory, capture_output=True, text=True, timeout=20)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('apply', result.stdout)
 
     def test_portable_install_preserves_state_and_refuses_changed_code(self):
         build_portable.build(self.directory / 'package')
