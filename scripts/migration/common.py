@@ -15,7 +15,8 @@ from urllib.parse import urlencode, quote
 
 CONTAINERS = ['amnezia-awg2', 'amnezia-xray', 'amnezia-telemt', '3x-ui',
               '3dp-postgres', '3dp-backend', '3dp-frontend', 'vpn-wireguard',
-              'vpn-openvpn', 'vpn-shadowsocks', 'vpn-hysteria2']
+              'vpn-openvpn', 'vpn-shadowsocks', 'vpn-hysteria2', 'vpn-edge',
+              'vpn-selfsteal-xray', 'vpn-selfsteal-site', 'vpn-selfsteal-hysteria2']
 ROOT = Path('/opt/vps-stack')
 JOB = None
 
@@ -51,6 +52,26 @@ def fingerprint(request):
 
 
 def exposure_bindings(name, bindings, request):
+    if request.get('relay_ip'):
+        bindings = copy.deepcopy(bindings)
+        for port, values in bindings.items():
+            normalized = set()
+            for value in values or []:
+                address = '127.0.0.1' if value.get('HostIp') in ['127.0.0.1', '::1'] else '0.0.0.0'
+                normalized.add((address, str(value['HostPort'])))
+            bindings[port] = [{'HostIp': address, 'HostPort': published} for address, published in sorted(normalized)]
+    if (request.get('self_steal') or request.get('relay_ip')) and name == '3x-ui' and '2053/tcp' in bindings:
+        bindings = copy.deepcopy(bindings)
+        bindings['2053/tcp'] = [{'HostIp': '127.0.0.1', 'HostPort': port}
+                                for port in sorted({str(value['HostPort']) for value in bindings['2053/tcp'] or []})]
+    if request.get('self_steal') and name == 'amnezia-xray':
+        result = copy.deepcopy(bindings)
+        if '443/tcp' not in result:
+            raise ValueError('Совместное использование TCP 443 требует старый XRay на внутреннем TCP 443')
+        result['443/tcp'] = [{'HostIp': '127.0.0.1', 'HostPort': '1443'}]
+        if '443/udp' in result:
+            result['443/udp'] = [{'HostIp': '127.0.0.1', 'HostPort': '1443'}]
+        return result
     if network_profile(request) == 'all':
         return copy.deepcopy(bindings)
     result = {}
@@ -60,6 +81,8 @@ def exposure_bindings(name, bindings, request):
         for value in values or []:
             address = '127.0.0.1'
             if name == 'amnezia-xray' and port == '443/tcp' and str(value['HostPort']) == '443':
+                address = '0.0.0.0'
+            if name in ['vpn-edge', 'vpn-selfsteal-hysteria2'] and port in ['443/tcp', '443/udp']:
                 address = '0.0.0.0'
             key = (address, str(value['HostPort']))
             if key not in seen:

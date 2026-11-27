@@ -35,8 +35,9 @@ class MigrationTests(unittest.TestCase):
             self.assertTrue(output.is_dir())
             if choice != '3':
                 known_folder.assert_called_once_with(folder)
-        with patch.object(migrate, 'ask', return_value='4'), patch('sys.stdout', new_callable=io.StringIO), self.assertRaises(ValueError):
-            migrate.choose_output_directory('bad-choice')
+        with patch.object(migrate, 'ask', side_effect=['4', '2']), patch.object(migrate, 'user_folder', return_value=self.directory / 'retry'), patch('sys.stdout', new_callable=io.StringIO):
+            output = migrate.choose_output_directory('retry-choice')
+        self.assertTrue(output.is_dir())
 
     def test_prompts_explain_waiting_defaults_and_retry_required_input(self):
         with patch('builtins.input', side_effect=['', 'answer']), patch('sys.stdout', new_callable=io.StringIO) as output:
@@ -236,6 +237,71 @@ class MigrationTests(unittest.TestCase):
         self.assertIn('KbdInteractiveAuthentication=no', arguments)
         self.assertIn('StrictHostKeyChecking=ask', arguments)
         self.assertNotIn('FAKE TEST KEY', arguments)
+
+    def test_proxyjump_uses_distinct_local_keys_without_forwarding_agent(self):
+        key = self.directory / 'target key'
+        relay_key = self.directory / 'relay key'
+        key.write_text('FAKE TARGET KEY')
+        relay_key.write_text('FAKE RELAY KEY')
+        target = migrate.Connection('8.8.8.8', 22, key)
+        entry = migrate.Connection('1.1.1.1', 2222, relay_key)
+        target.use_jump(entry, self.directory)
+        config = Path(target.options[1]).read_text()
+        self.assertIn('ProxyJump vps-migration-relay', config)
+        self.assertIn('Port 2222', config)
+        self.assertIn('IdentityFile "' + relay_key.as_posix() + '"', config)
+        self.assertIn('ForwardAgent no', config)
+        self.assertNotIn('FAKE RELAY KEY', config)
+        self.assertNotIn('FAKE TARGET KEY', config)
+
+    def test_restored_clients_use_relay_while_server_settings_use_origin(self):
+        request = {'ip': '9.9.9.9', 'relay_ip': '1.1.1.1', 'domain': 'entry.example.org'}
+        with patch.object(c, 'ROOT', self.directory):
+            client = self.directory / 'exports/personal/configurations/old.json'
+            server = self.directory / 'config/xray/server.json'
+            c.write(client, {'server': '8.8.8.8', 'password': '8.8.8.8'})
+            c.write(server, {'address': '8.8.8.8'})
+            remote.rewrite_host_settings({'source_ip': '8.8.8.8', 'source_domain': 'old.example.org',
+                                          'host_roots': [str(self.directory)], 'containers': []}, request)
+            self.assertEqual(json.loads(client.read_text()), {'server': '1.1.1.1', 'password': '8.8.8.8'})
+            self.assertEqual(json.loads(server.read_text())['address'], '9.9.9.9')
+
+    def test_two_server_wizard_orders_setup_and_hardens_both_hosts(self):
+        key = self.directory / 'local-key'
+        key.write_text('FAKE LOCAL KEY')
+        answers = ['1', '3', str(self.directory / 'results'), '8.8.8.8', '22', str(key),
+                   '2', '1.1.1.1', '2222', str(key), 'entry.example.org', 'mask.example.org',
+                   '2', 'firefox', '', 'DEPLOY 8.8.8.8', 'RELAY 1.1.1.1']
+        operations = []
+        def prepare(host, request, output):
+            self.assertNotIn('key', request)
+            self.assertNotIn('FAKE LOCAL KEY', json.dumps(request))
+            return '/root/vps-transfer/' + request['mode']
+        with patch('sys.argv', ['migrate.py']), patch('builtins.input', side_effect=answers), \
+             patch('sys.stdout', new_callable=io.StringIO), patch.object(migrate, 'prepare', side_effect=prepare), \
+             patch.object(migrate, 'action') as action, patch.object(migrate, 'background_action',
+                side_effect=lambda host, job, operation, result: operations.append((host.address, operation))), \
+             patch.object(migrate.Connection, 'ssh', return_value=b'0'), \
+             patch.object(migrate.Connection, 'download'), patch.object(c, 'safe_extract'), \
+             patch.object(migrate.shutil, 'which', return_value='tool'):
+            migrate.main()
+        self.assertEqual(operations, [('1.1.1.1', 'relay'), ('8.8.8.8', 'deploy')])
+        security = [(call.args[0].address, call.args[2]) for call in action.call_args_list
+                    if call.args[2] in ['harden', 'commit-ssh']]
+        self.assertEqual(security, [('8.8.8.8', 'harden'), ('8.8.8.8', 'commit-ssh'),
+                                    ('1.1.1.1', 'harden'), ('1.1.1.1', 'commit-ssh')])
+
+    def test_canceling_relay_confirmation_prevents_all_remote_actions(self):
+        key = self.directory / 'local-key'
+        key.write_text('FAKE LOCAL KEY')
+        answers = ['1', '3', str(self.directory / 'cancel'), '8.8.8.8', '22', str(key),
+                   '2', '1.1.1.1', '2222', str(key), 'entry.example.org', 'mask.example.org',
+                   '2', 'firefox', '', 'DEPLOY 8.8.8.8', 'NO']
+        with patch('sys.argv', ['migrate.py']), patch('builtins.input', side_effect=answers), \
+             patch('sys.stdout', new_callable=io.StringIO), patch.object(migrate, 'prepare') as prepare, \
+             patch.object(migrate.shutil, 'which', return_value='tool'), self.assertRaises(RuntimeError):
+            migrate.main()
+        prepare.assert_not_called()
 
     def test_backup_failure_starts_source_containers_again(self):
         container = {'Id': 'source-id', 'Name': '/amnezia-xray', 'State': {'Running': True},

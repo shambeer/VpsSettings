@@ -19,6 +19,8 @@ IMAGES = {
     'backend': 'ghcr.io/denpiligrim/3dp-manager-server@sha256:3f760f1ecf6162595b3291c7bd90c689506647333641cad62a7b27ca57d2ace4',
     'frontend': 'ghcr.io/denpiligrim/3dp-manager-client@sha256:373bfcaee91e07e29f97e6a673cf54cdda0b3affda85592504eda2c7ff99ea84',
     'postgres': 'postgres:18-alpine',
+    'nginx': 'nginx@sha256:8eb04fe3b385090e9aa02961f77398ad09b6bf33ab07f6669a5bb7acce22c0d3',
+    'haproxy': 'haproxy@sha256:7816a9801a6846b912bc37e48529808e2fa87c3c47992441940f68e393ebcfeb',
 }
 ROLES = ['personal', 'shared']
 NETWORK = 'vps-stack-network'

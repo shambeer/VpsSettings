@@ -14,26 +14,38 @@ import tarfile
 import uuid
 
 import common as c
+import topology
+import console as ui
 
 HERE = Path(__file__).resolve().parent
 REPOSITORY = HERE.parent.parent
 
 
 def ask(prompt, default=None):
-    print('\n[ОЖИДАНИЕ ВВОДА] ' + prompt, flush=True)
-    if default is None:
-        print('Введите значение и нажмите Enter. Поле обязательно.', flush=True)
-    elif default == '':
-        print('Введите значение и нажмите Enter. Чтобы пропустить, нажмите Enter.', flush=True)
-    else:
-        print('Введите значение и нажмите Enter. Enter без ввода: ' + str(default), flush=True)
+    return ui.prompt(prompt, default)
+
+
+def ask_validated(prompt, validate, default=None):
     while True:
-        value = input('> ').strip()
-        if value:
-            return value
-        if default is not None:
-            return default
-        print('Значение не введено. Введите его после > и нажмите Enter.', flush=True)
+        value = ask(prompt, default)
+        try:
+            return validate(value)
+        except (ValueError, OSError) as error:
+            ui.error(error)
+
+
+def ssh_port(value):
+    port = int(value)
+    if not 1 <= port <= 65535:
+        raise ValueError('SSH-порт должен быть от 1 до 65535')
+    return port
+
+
+def existing_key(value):
+    path = local_path(value)
+    if not path.is_file():
+        raise ValueError('Файл SSH-ключа не найден; укажите полный путь к существующему файлу')
+    return path
 
 
 def local_path(value):
@@ -63,9 +75,9 @@ def user_folder(name):
 
 
 def choose_output_directory(identifier):
-    print('\nГде сохранить бэкап, конфиги и результаты?', flush=True)
-    print('1 — Рабочий стол\n2 — Документы (по умолчанию)\n3 — Свой путь', flush=True)
-    choice = ask('Каталог сохранения', '2')
+    ui.menu('Сохранение бэкапов, конфигов и результатов', [
+        ('1', 'Рабочий стол'), ('2', 'Документы (по умолчанию)'), ('3', 'Свой путь')])
+    choice = ui.select('Каталог сохранения', ['1', '2', '3'], '2', read=ask)
     if choice in ['1', '2']:
         base = user_folder('Desktop' if choice == '1' else 'Documents')
     elif choice == '3':
@@ -94,6 +106,20 @@ class Connection:
                         '-o', 'ControlPath=none', '-o', 'ConnectTimeout=15', '-o', 'ServerAliveInterval=20',
                         '-o', 'ServerAliveCountMax=6']
 
+    def use_jump(self, entry, output):
+        if entry.address == self.address:
+            raise ValueError('SSH relay не должен совпадать с целевым сервером')
+        key = entry.key.as_posix()
+        if any(character in key for character in ['\n', '\r', '\0']):
+            raise ValueError('Недопустимый путь SSH-ключа')
+        key = key.replace('%', '%%').replace('"', '\\"')
+        config = ('Host vps-migration-relay\n  HostName ' + entry.address + '\n  User root\n  Port ' + str(entry.port)
+                  + '\n  IdentityFile "' + key + '"\n  IdentitiesOnly yes\n  StrictHostKeyChecking ask\n  ForwardAgent no\n'
+                  'Host ' + self.address + '\n  ProxyJump vps-migration-relay\n  ForwardAgent no\n')
+        path = output / ('ssh-routing-' + self.address + '.conf')
+        c.write(path, config)
+        self.options = ['-F', str(path), *self.options]
+
     def ssh(self, command, capture=False, quiet=False):
         arguments = ['ssh', *self.options, '-p', str(self.port), 'root@' + self.address, command]
         process = subprocess.run(arguments, stdout=subprocess.PIPE if capture else None,
@@ -114,15 +140,15 @@ class Connection:
 
 
 def connection(label):
-    print('\n' + label)
-    address = c.validate_ip(ask('IPv4 сервера'))
-    port = int(ask('SSH-порт', 22))
-    key = ask('Путь к приватному SSH-ключу, не его содержимое')
+    ui.section(label)
+    address = ask_validated('IPv4 сервера', c.validate_ip)
+    port = ask_validated('SSH-порт', ssh_port, 22)
+    key = ask_validated('Полный путь к приватному SSH-ключу на этом компьютере; содержимое ключа не вставляйте', existing_key)
     return Connection(address, port, key)
 
 
 def prepare(remote, request, output):
-    print('\n[ВЫПОЛНЯЕТСЯ] Проверка SSH и загрузка файлов на сервер. Ввод не требуется.', flush=True)
+    print('\n[ВЫПОЛНЯЕТСЯ] Проверка SSH и загрузка файлов. SSH может запросить подтверждение отпечатка или пароль ключа.', flush=True)
     if remote.ssh('id -u', capture=True).strip() != b'0':
         raise RuntimeError('Требуется успешный вход root по указанному ключу')
     session = remote.ssh('printf "%s" "$SSH_CONNECTION"', capture=True).decode().split()
@@ -132,7 +158,7 @@ def prepare(remote, request, output):
     name = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d-%H%M%S-') + uuid.uuid4().hex[:8]
     job = '/root/vps-transfer/' + name
     remote.ssh('umask 077; mkdir -p /root/vps-transfer; mkdir ' + shlex.quote(job))
-    for filename in ['common.py', 'stack.py', 'snapshot.py', 'remote.py']:
+    for filename in ['common.py', 'stack.py', 'snapshot.py', 'remote.py', 'relay.py', 'selfsteal.py']:
         remote.upload(HERE / filename, job + '/' + filename)
     request_file = output / ('request-' + name + '.json')
     c.write(request_file, request)
@@ -179,6 +205,12 @@ def background_action(remote, job, name, result_name):
 
 def bundle_from_source(output):
     source = connection('Старый сервер: создание полной копии временно остановит выбранные VPN и панели')
+    access = ui.select('SSH к старому серверу: 1 — напрямую, 2 — через доступный relay', ['1', '2'], '1', read=ask)
+    if access == '2':
+        entry = connection('SSH relay для доступа к старому серверу; пересылка VPN здесь не настраивается')
+        source.use_jump(entry, output)
+    elif access != '1':
+        raise ValueError('Выберите вариант SSH 1 или 2')
     domain = c.validate_domain(ask('Текущий домен старого сервера'))
     if ask('Для согласия на временную остановку введите BACKUP ' + source.address) != 'BACKUP ' + source.address:
         raise RuntimeError('Создание копии отменено')
@@ -211,14 +243,13 @@ def main():
     for tool in ['ssh', 'scp']:
         if shutil.which(tool) is None:
             raise RuntimeError('Не найден OpenSSH: ' + tool)
-    print('\nМастер готов. Выбирайте пункты цифрой и нажимайте Enter.', flush=True)
+    ui.section('VPS Migration • установка и перенос VPN')
+    print('  Выбирайте пункты цифрой и нажимайте Enter. Отмена: Ctrl+C.', flush=True)
     print('При отметке [ОЖИДАНИЕ ВВОДА] программа ждёт ваш ответ после >. Отмена: Ctrl+C.', flush=True)
-    print('1 — Новая установка с личными и общими доступами')
-    print('2 — Перенос существующих доступов из полной копии + резервные протоколы')
-    print('3 — Только создать полную копию старого сервера')
-    mode = ask('Режим', '2')
-    if mode not in ['1', '2', '3']:
-        raise ValueError('Неизвестный режим')
+    ui.menu('Операция', [('1', 'Новая установка с личными и общими доступами'),
+                        ('2', 'Перенос существующих доступов из полной резервной копии'),
+                        ('3', 'Только создать полную копию старого сервера')])
+    mode = ui.select('Выберите операцию', ['1', '2', '3'], '2', read=ask)
     identifier = datetime.datetime.now().strftime('%Y%m%d-%H%M%S-') + uuid.uuid4().hex[:8]
     output = choose_output_directory(identifier)
     if mode == '3':
@@ -227,7 +258,7 @@ def main():
         return
     bundle = None
     if mode == '2':
-        selection = ask('1 — Создать свежую полную копию; 2 — использовать готовую', '1')
+        selection = ui.select('1 — Создать свежую полную копию; 2 — использовать готовую', ['1', '2'], '1', read=ask)
         if selection == '1':
             bundle = bundle_from_source(output)
         elif selection == '2':
@@ -240,34 +271,51 @@ def main():
         else:
             raise ValueError('Неизвестный вариант копии')
     target = connection('Новый сервер: только чистая установка, Ubuntu/Debian, root и Python 3.11+')
-    domain = c.validate_domain(ask('Домен нового сервера; заранее направьте A-запись на его IPv4'))
+    scheme, entry = topology.choose(connection, ask, target)
+    scheme.update(topology.bundle_settings(bundle, scheme))
+    if entry:
+        target.use_jump(entry, output)
+    public_ip = entry.address if entry else target.address
+    domain = c.validate_domain(ask('Домен входа; заранее направьте A-запись только на ' + public_ip))
     camouflage = c.validate_domain(ask('HTTPS-сайт для новых REALITY/Telegram-конфигов: TLS 1.3 и HTTP/2, не домен этого VPS', ''))
-    print('1 — Сеть с фильтрацией: снаружи только XRay TCP 443; панели и резервные протоколы локально')
-    print('2 — Все VPN-порты и HTTPS-панель 3DP опубликованы, как в обычной установке')
-    profile_choice = ask('Сетевой профиль', '1')
-    if profile_choice not in ['1', '2']:
-        raise ValueError('Неизвестный сетевой профиль')
+    ui.menu('Публикация портов', [('1', 'Только TCP/UDP 443 — остальные старые VPN и панели локальны'),
+                                ('2', 'Сохранить доступность старых VPN-портов и панели 3DP')])
+    profile_choice = ui.select('Сетевой профиль', ['1', '2'], '2' if scheme['self_steal'] else '1', read=ask)
     network_profile = 'filtered' if profile_choice == '1' else 'all'
     selected_fingerprint = ask('TLS fingerprint клиента REALITY: firefox или safari', 'firefox')
     c.fingerprint({'fingerprint': selected_fingerprint})
     email = ask('Email для Let’s Encrypt, можно оставить пустым', '')
     if email and (not re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+', email) or email.startswith('-')):
         raise ValueError('Некорректный email')
-    print('\nБудут установлены Docker, VPN, 3x-ui/3DP, Fail2ban, firewall и Certbot.')
+    ui.section('Проверка плана перед изменениями')
+    print('Будут установлены Docker, VPN, 3x-ui/3DP, Fail2ban, firewall и Certbot.')
     print('Протоколы: XRay, AmneziaWG, Telegram MTProxy, WireGuard, OpenVPN, Shadowsocks, Hysteria2.')
     print('Приватный SSH-ключ останется на этом компьютере. Парольный вход отключится после проверки ключа.')
     print('Сетевой профиль: ' + network_profile + '. Маскировка не устраняет блокировку всего IP.')
+    print('Основной VPS: ' + target.address + '; вход: ' + public_ip + '; домен: ' + domain)
+    print('Старые VPN сохраняются. Дополнительный Self-Steal: ' + str(scheme['self_steal']))
+    if entry:
+        print('Relay будет пересылать TCP/UDP без расшифровки; дополнительный участок может увеличить задержку.')
     print('Подтверждение также означает согласие с условиями Let’s Encrypt: https://letsencrypt.org/repository/')
     if ask('Для запуска введите DEPLOY ' + target.address) != 'DEPLOY ' + target.address:
         raise RuntimeError('Развёртывание отменено')
+    if entry and ask('Для настройки перенаправления введите RELAY ' + entry.address) != 'RELAY ' + entry.address:
+        raise RuntimeError('Настройка relay отменена')
     request = {'mode': 'fresh' if mode == '1' else 'restore', 'ip': target.address, 'domain': domain,
                'camouflage': camouflage, 'email': email, 'acme_agreed': True, 'ssh_port': target.port,
-               'network_profile': network_profile, 'fingerprint': selected_fingerprint}
+               'network_profile': network_profile, 'fingerprint': selected_fingerprint, **scheme}
     job = prepare(target, request, output)
     c.write(output / 'operation.json', {'remote_job': job, 'target_ip': target.address, 'mode': request['mode']})
     action(target, job, 'preflight')
+    entry_job = None
+    if entry:
+        entry_job = prepare(entry, topology.relay_request(entry, target, request), output)
+        topology.save_relay_instructions(output, entry, entry_job)
+        action(entry, entry_job, 'relay-preflight')
     if bundle:
         target.upload(bundle, job + '/migration-bundle.tar.gz')
+    if entry:
+        background_action(entry, entry_job, 'relay', 'relay-result.json')
     background_action(target, job, 'deploy', 'deploy-result.json')
     target.download(job + '/access-files.tar.gz', output / 'access-files.tar.gz')
     target.download(job + '/deploy-result.json', output / 'deploy-result.json')
@@ -276,6 +324,11 @@ def main():
     if target.ssh('id -u', capture=True).strip() != b'0':
         raise RuntimeError('Новый SSH-вход не подтверждён; через 180 секунд сработает откат SSH')
     action(target, job, 'commit-ssh')
+    if entry:
+        action(entry, entry_job, 'harden')
+        if entry.ssh('id -u', capture=True).strip() != b'0':
+            raise RuntimeError('SSH-вход relay не подтверждён; ожидается автоматический откат SSH')
+        action(entry, entry_job, 'commit-ssh')
     c.write(output / 'security-result.json', {'key_login_verified_after_hardening': True,
             'password_login_disabled': True, 'fail2ban_sshd_enabled': True})
     print('\nГотово. Конфиги и строки:', output / 'access')

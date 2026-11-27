@@ -22,6 +22,8 @@ from urllib.parse import urlencode, urlsplit, urlunsplit, parse_qsl
 import common as c
 import snapshot
 import stack
+import relay
+import selfsteal
 
 
 def progress(value):
@@ -46,6 +48,8 @@ def preflight(request, target=True):
     if sys.version_info < (3, 11) or not hasattr(__import__('tarfile'), 'data_filter'):
         raise RuntimeError('Нужен Python 3.11+ с актуальными исправлениями безопасности tarfile')
     if target:
+        if request.get('relay_ip'):
+            relay.assert_local_public_ip(request['ip'])
         if c.run(['sh', '-c', 'command -v docker'], check=False).returncode == 0:
             if c.run(['docker', 'ps', '-aq']).stdout.strip():
                 raise RuntimeError('Целевой сервер должен быть чистым: контейнеры уже существуют')
@@ -55,8 +59,8 @@ def preflight(request, target=True):
         if memory < 1500 * 1024 or shutil.disk_usage('/').free < 6 * 1024 ** 3:
             raise RuntimeError('Нужно минимум 1.5 GiB RAM и 6 GiB свободного диска; рекомендуется 2–4 GiB RAM')
         addresses = {item[4][0] for item in socket.getaddrinfo(request['domain'], None, socket.AF_INET)}
-        if addresses != {request['ip']}:
-            raise RuntimeError('Все A-записи домена должны указывать только на целевой IPv4')
+        if addresses != {request.get('relay_ip') or request['ip']}:
+            raise RuntimeError('Все A-записи домена должны указывать на IPv4 входа: relay либо основной VPS')
         try:
             ipv6 = socket.getaddrinfo(request['domain'], None, socket.AF_INET6)
         except socket.gaierror:
@@ -68,7 +72,7 @@ def preflight(request, target=True):
         if not Path('/dev/net/tun').exists():
             raise RuntimeError('/dev/net/tun недоступен; проверьте настройки VPS у провайдера')
         listening = c.run(['ss', '-H', '-lntu']).stdout.decode()
-        reserved = {80, 443, 1194, 2053, 2443, 6659, 8388, 8389, 46872, 50553, 51820}
+        reserved = {80, 443, 1443, 1194, 2053, 2443, 6659, 8388, 8389, 46872, 50553, 51820}
         for line in listening.splitlines():
             fields = line.split()
             if len(fields) > 4:
@@ -98,14 +102,26 @@ def firewall(request):
     if c.network_profile(request) == 'all':
         tcp_ports += [50553, 6659, 8388, 8389]
         udp_ports = [46872, 51820, 1194, 2443, 8388, 8389]
+        tcp_ports = sorted(set(tcp_ports + request.get('extra_tcp_ports', [])))
+        udp_ports = sorted(set(udp_ports + request.get('extra_udp_ports', [])))
     for port in tcp_ports:
-        c.run(['ufw', 'allow', str(port) + '/tcp'])
+        if request.get('relay_ip'):
+            c.run(['ufw', 'allow', 'from', request['relay_ip'], 'to', 'any', 'port', str(port), 'proto', 'tcp'])
+        else:
+            c.run(['ufw', 'allow', str(port) + '/tcp'])
+    if request.get('self_steal') and 443 not in udp_ports:
+        udp_ports.append(443)
     for port in udp_ports:
-        c.run(['ufw', 'allow', str(port) + '/udp'])
+        if request.get('relay_ip'):
+            c.run(['ufw', 'allow', 'from', request['relay_ip'], 'to', 'any', 'port', str(port), 'proto', 'udp'])
+        else:
+            c.run(['ufw', 'allow', str(port) + '/udp'])
     c.run(['ufw', 'default', 'deny', 'incoming'])
     c.run(['ufw', 'default', 'allow', 'outgoing'])
     c.run(['ufw', '--force', 'enable'])
     c.run(['systemctl', 'restart', 'docker'])
+    if request.get('relay_ip'):
+        relay.install_origin_gate(request)
 
 
 def check_camouflage(request, domain=None, target=None):
@@ -159,7 +175,7 @@ def certificate(request):
     text += '  domain=' + request['domain'] + '\n  install -d -m 700 "/root/3x-ui/cert/$domain"\n'
     text += '  install -m 600 "$RENEWED_LINEAGE/fullchain.pem" "/root/3x-ui/cert/$domain/fullchain.pem"\n'
     text += '  install -m 600 "$RENEWED_LINEAGE/privkey.pem" "/root/3x-ui/cert/$domain/privkey.pem"\nfi\n'
-    text += 'for name in vpn-hysteria2 3dp-frontend 3x-ui; do\n'
+    text += 'for name in vpn-hysteria2 vpn-selfsteal-xray vpn-selfsteal-hysteria2 3dp-frontend 3x-ui; do\n'
     text += '  if [ "$(docker inspect -f \'{{.State.Running}}\' "$name" 2>/dev/null || true)" = true ]; then docker restart "$name" >/dev/null; fi\n'
     text += 'done\n'
     c.write(hook, text)
@@ -217,7 +233,7 @@ def rewrite_host_settings(manifest, request):
         for path in candidates:
             if path.is_symlink() or not path.is_file() or path.stat().st_size > 4 * 1024 ** 2:
                 continue
-            if path.suffix not in ['.json', '.conf', '.toml', '.txt', '.yml', '.yaml']:
+            if path.suffix not in ['.json', '.conf', '.toml', '.txt', '.yml', '.yaml', '.cfg']:
                 continue
             if any(part in ['pki', 'cert', 'certs', 'postgres', 'node_modules'] for part in path.parts):
                 continue
@@ -225,19 +241,24 @@ def rewrite_host_settings(manifest, request):
                 text = path.read_text()
             except (UnicodeError, OSError):
                 continue
-            if path.suffix == '.json':
+            endpoint_request = request
+            if request.get('relay_ip') and path.is_relative_to(c.ROOT / 'exports'):
+                endpoint_request = {**request, 'ip': request['relay_ip']}
+            if path == c.ROOT / 'config/selfsteal-edge/server.cfg':
+                updated = text.replace(old_domain, request['domain'])
+            elif path.suffix == '.json':
                 try:
                     value = json.loads(text)
                 except ValueError:
                     continue
-                updated = json.dumps(replace_endpoint(value, old_ip, old_domain, request), ensure_ascii=False, indent=2) + '\n'
+                updated = json.dumps(replace_endpoint(value, old_ip, old_domain, endpoint_request), ensure_ascii=False, indent=2) + '\n'
             else:
                 lines = []
                 for line in text.splitlines(keepends=True):
                     if path.suffix == '.txt' and '://' in line:
-                        line = replace_endpoint(line.rstrip(), old_ip, old_domain, request) + '\n'
+                        line = replace_endpoint(line.rstrip(), old_ip, old_domain, endpoint_request) + '\n'
                     elif re.match(r'\s*(?:server_name\s|ssl_certificate(?:_key)?\s|proxy_pass\s|remote\s|Endpoint\s*=)', line):
-                        line = line.replace(old_ip, request['ip']).replace(old_domain, request['domain'])
+                        line = line.replace(old_ip, endpoint_request['ip']).replace(old_domain, request['domain'])
                     lines.append(line)
                 updated = ''.join(lines)
             if updated != text:
@@ -261,7 +282,8 @@ def rewrite_host_settings(manifest, request):
 
 
 def start_restored(manifest, request):
-    order = ['3dp-postgres', 'amnezia-xray', 'amnezia-awg2', 'amnezia-telemt', '3x-ui', '3dp-backend', '3dp-frontend']
+    order = ['3dp-postgres', 'amnezia-xray', 'amnezia-awg2', 'amnezia-telemt', '3x-ui', '3dp-backend', '3dp-frontend',
+             *selfsteal.NAMES]
     names = [item['Name'].lstrip('/') for item in manifest['containers']]
     for name in order + [value for value in names if value not in order]:
         if name not in names:
@@ -306,7 +328,7 @@ def sql_text(value):
 
 
 def private_panel_url(value, manifest, request):
-    if c.network_profile(request) != 'filtered' or not isinstance(value, str):
+    if (c.network_profile(request) != 'filtered' and not request.get('self_steal') and not request.get('relay_ip')) or not isinstance(value, str):
         return value
     parts = urlsplit(value)
     owned = [manifest['source_ip'], manifest['source_domain'], request['ip'], request['domain']]
@@ -600,13 +622,14 @@ def verify_proxy_client(role, protocol, request):
     if not profile.exists():
         raise RuntimeError('Не найден экспорт доступа для проверки: ' + role + '/' + protocol)
     config = json.loads(profile.read_text())
-    if protocol == 'xray':
+    if protocol in ['xray', 'selfsteal-vless', 'selfsteal-xhttp']:
         config['inbounds'] = [{'listen': '0.0.0.0', 'port': 10808, 'protocol': 'socks', 'settings': {'udp': False}}]
-        server = c.docker_json('inspect', 'amnezia-xray')[0]
+        server_name = 'amnezia-xray' if protocol == 'xray' else 'vpn-selfsteal-xray'
+        server = c.docker_json('inspect', server_name)[0]
         reference = server['Image']
         binary = None
         for candidate in ['/usr/bin/xray', '/usr/local/bin/xray']:
-            if c.run(['docker', 'exec', 'amnezia-xray', candidate, 'version'], check=False).returncode == 0:
+            if c.run(['docker', 'exec', server_name, candidate, 'version'], check=False).returncode == 0:
                 binary = candidate
                 break
         if not binary:
@@ -615,11 +638,12 @@ def verify_proxy_client(role, protocol, request):
         command = ['run', '-c', '/etc/check/client.json']
     else:
         config['socks5'] = {'listen': '0.0.0.0:10808'}
-        server = c.docker_json('inspect', 'vpn-hysteria2')[0]
+        server_name = 'vpn-selfsteal-hysteria2' if protocol == 'selfsteal-hysteria2' else 'vpn-hysteria2'
+        server = c.docker_json('inspect', server_name)[0]
         reference = server['Image']
-        if c.network_profile(request) == 'filtered':
+        if c.network_profile(request) == 'filtered' and protocol == 'hysteria2':
             address = server['NetworkSettings']['Networks'][stack.NETWORK]['IPAddress']
-            config['server'] = address + ':2443'
+            config['server'] = address + (':443' if protocol == 'selfsteal-hysteria2' else ':2443')
         entrypoint = None
         command = ['client', '-c', '/etc/check/client.json']
     name = 'vps-check-' + protocol + '-' + role + '-' + c.JOB.name[-8:]
@@ -649,6 +673,8 @@ def verify_and_export(request, job):
     time.sleep(5)
     checks = {}
     for name in c.CONTAINERS:
+        if name in selfsteal.NAMES and not request.get('self_steal'):
+            continue
         if not stack.exists(name):
             checks[name] = {'running': False, 'missing': True}
             continue
@@ -671,6 +697,14 @@ def verify_and_export(request, job):
     for role in stack.ROLES:
         verify_proxy_client(role, 'xray', request)
         verify_proxy_client(role, 'hysteria2', request)
+        if request.get('self_steal'):
+            for protocol in ['selfsteal-vless', 'selfsteal-xhttp', 'selfsteal-hysteria2']:
+                verify_proxy_client(role, protocol, request)
+    if request.get('self_steal'):
+        site = c.run(['curl', '--fail', '--silent', '--show-error', '--max-time', '30',
+                      'https://' + request['domain'] + '/'], timeout=40)
+        if b'<title>Welcome</title>' not in site.stdout:
+            raise RuntimeError('Сайт Self-Steal через публичный вход не прошёл проверку')
     for name, previous in checks.items():
         current = c.docker_json('inspect', name)[0]
         if not current['State']['Running'] or current['RestartCount'] != previous['restart_count']:
@@ -678,10 +712,16 @@ def verify_and_export(request, job):
     if (job / 'rotation-before.json').exists():
         rotation = json.loads((job / 'rotation-before.json').read_text())['value']
         database_sql("UPDATE setting SET value=" + sql_text(rotation) + " WHERE key='rotation_status';")
-    c.write(c.ROOT / 'exports/network-profile.txt', 'Профиль: ' + c.network_profile(request) + '\nВ filtered удалённо доступен только XRay TCP 443. Остальные VPN и панели слушают loopback; их экспортированные конфиги не работают удалённо без изменения публикации портов. SSH и HTTP для ACME сохранены. Ограничения скорости не установлены.\n')
+    c.write(c.ROOT / 'exports/network-profile.txt', 'Профиль: ' + c.network_profile(request)
+            + '\nSelf-Steal: ' + str(bool(request.get('self_steal'))) + '\nRelay: ' + str(request.get('relay_ip') or 'нет')
+            + '\nВ filtered публичны только TCP/UDP 443 (UDP при Self-Steal); старые VPN на других портах и панели локальны. '
+            'В all сохраняются старые порты. Старый XRay на TCP 443 доступен по прежнему SNI через общий вход. '
+            'Новые конфиги имеют префикс selfsteal-. Ограничения скорости не установлены.\n')
     c.write(c.ROOT / 'exports/README.md', '# Доступы VPN\n\npersonal/ — личные доступы; shared/ — для остальных. Не раздавать весь архив: admin/ и legacy/ содержат другие действующие доступы.\n\nTXT импортировать целиком через вставку ключа; .conf в WireGuard/AmneziaWG, .ovpn в OpenVPN, Hysteria2 в совместимый клиент. Не все протоколы поддерживаются одним приложением.\n\nПроверка контейнеров не доказывает работоспособность VPN в сети провайдера. Проверить сайты с телефона через Wi-Fi и мобильную сеть. IPv6-маршрутизация для резервных туннелей отдельно не настроена и не испытана.\n')
     result = {'success': True, 'mode': request['mode'], 'containers': checks,
               'network_profile': c.network_profile(request), 'fingerprint': c.fingerprint(request),
+              'self_steal': bool(request.get('self_steal')), 'relay_ip': request.get('relay_ip'),
+              'new_protocol_checks': ['selfsteal-vless', 'selfsteal-xhttp', 'selfsteal-hysteria2'] if request.get('self_steal') else [],
               'external_vpn_protocols': ['xray'] if c.network_profile(request) == 'filtered' else ['xray', 'amneziawg', 'telegram', 'wireguard', 'openvpn', 'shadowsocks', 'hysteria2'],
               'panel_https': 200, 'client_network_tests': 'required',
               'manager_login_and_protected_api': True,
@@ -694,7 +734,8 @@ def verify_and_export(request, job):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('action', choices=['preflight', 'backup', 'deploy', 'harden', 'commit-ssh', 'rollback-ssh'])
+    parser.add_argument('action', choices=['preflight', 'backup', 'deploy', 'harden', 'commit-ssh', 'rollback-ssh',
+                                          'relay-preflight', 'relay'])
     parser.add_argument('--job', type=Path, required=True)
     arguments = parser.parse_args()
     job = arguments.job.resolve()
@@ -703,7 +744,7 @@ def main():
     c.JOB = job
     os.umask(0o077)
     operation_lock = None
-    if arguments.action in ['backup', 'deploy']:
+    if arguments.action in ['backup', 'deploy', 'relay']:
         import fcntl
         operation_lock = Path('/run/lock/vps-transfer.lock').open('a')
         try:
@@ -729,7 +770,13 @@ def main():
     c.validate_domain(request['camouflage'])
     c.network_profile(request)
     c.fingerprint(request)
-    if arguments.action == 'preflight':
+    if arguments.action == 'relay-preflight':
+        relay.preflight(request)
+        progress('Проверка relay пройдена')
+    elif arguments.action == 'relay':
+        relay.install(request, job)
+        progress('Relay настроен; проверка VPN будет выполнена после основного VPS')
+    elif arguments.action == 'preflight':
         preflight(request, request['mode'] != 'backup')
         progress('Предварительная проверка пройдена')
     elif arguments.action == 'backup':
@@ -754,6 +801,8 @@ def main():
         progress('Выпуск или проверка TLS-сертификата')
         certificate(request)
         if manifest:
+            request['self_steal'] = request.get('self_steal') or any(
+                item['Name'].lstrip('/') == 'vpn-edge' for item in manifest['containers'])
             rewrite_host_settings(manifest, request)
             snapshot.restore_containers(manifest, request)
             start_restored(manifest, request)
@@ -764,6 +813,9 @@ def main():
         else:
             progress('Установка основного набора и резервных протоколов')
             stack.fresh(request)
+        if request.get('self_steal'):
+            progress('Добавление Self-Steal и XHTTP с сохранением прежних VPN')
+            selfsteal.install(request)
         progress('Проверка контейнеров и подготовка доступа')
         verify_and_export(request, job)
         progress('Развёртывание завершено; далее отдельная проверка защиты SSH')

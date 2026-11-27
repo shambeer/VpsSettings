@@ -311,7 +311,7 @@ def restore_containers(manifest, request):
                 c.api('POST', '/networks/' + quote(network, safe='') + '/connect',
                       {'Container': created['Id'], 'EndpointConfig': {} if network == 'bridge' else endpoint(settings)})
 
-    if c.network_profile(request) == 'filtered':
+    if c.network_profile(request) == 'filtered' or request.get('self_steal') or request.get('relay_ip'):
         names = {item['Name'].lstrip('/') for item in manifest['containers']}
         if {'3dp-backend', '3x-ui'}.issubset(names):
             backend = c.docker_json('inspect', '3dp-backend')[0]

@@ -7,7 +7,7 @@ import sys
 import zipfile
 
 FILES = ['.gitignore', *['scripts/migration/' + name for name in [
-    'common.py', 'migrate.py', 'remote.py', 'snapshot.py', 'stack.py',
+    'common.py', 'migrate.py', 'remote.py', 'snapshot.py', 'stack.py', 'relay.py', 'selfsteal.py', 'topology.py', 'console.py',
     'README.md', 'deploy.ps1', 'deploy.sh']]]
 
 
