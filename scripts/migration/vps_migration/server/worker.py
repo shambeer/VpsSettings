@@ -73,7 +73,7 @@ def preflight(request, target=True):
         if not Path('/dev/net/tun').exists():
             raise RuntimeError('/dev/net/tun недоступен; проверьте настройки VPS у провайдера')
         listening = c.run(['ss', '-H', '-lntu']).stdout.decode()
-        reserved = {80, 443, 1443, 1194, 2053, 2443, 6659, 8388, 8389, 46872, 50553, 51820}
+        reserved = {80, 443, c.selfsteal_port(request), 1194, 2053, 2443, 6659, 8388, 8389, 46872, 50553, 51820}
         for line in listening.splitlines():
             fields = line.split()
             if len(fields) > 4:
@@ -109,13 +109,15 @@ def firewall(request):
         udp_ports = [46872, 51820, 1194, 2443, 8388, 8389]
         tcp_ports = sorted(set(tcp_ports + request.get('extra_tcp_ports', [])))
         udp_ports = sorted(set(udp_ports + request.get('extra_udp_ports', [])))
-    for port in tcp_ports:
+    if request.get('self_steal'):
+        tcp_ports.append(c.selfsteal_port(request))
+    for port in sorted(set(tcp_ports)):
         if request.get('relay_ip'):
             c.run(['ufw', 'allow', 'from', request['relay_ip'], 'to', 'any', 'port', str(port), 'proto', 'tcp'])
         else:
             c.run(['ufw', 'allow', str(port) + '/tcp'])
-    if request.get('self_steal') and 443 not in udp_ports:
-        udp_ports.append(443)
+    if request.get('self_steal') and c.selfsteal_port(request) not in udp_ports:
+        udp_ports.append(c.selfsteal_port(request))
     for port in udp_ports:
         if request.get('relay_ip'):
             c.run(['ufw', 'allow', 'from', request['relay_ip'], 'to', 'any', 'port', str(port), 'proto', 'udp'])
@@ -250,7 +252,7 @@ def rewrite_host_settings(manifest, request):
             if request.get('relay_ip') and path.is_relative_to(c.ROOT / 'exports'):
                 endpoint_request = {**request, 'ip': request['relay_ip']}
             if path == c.ROOT / 'config/selfsteal-edge/server.cfg':
-                updated = text.replace(old_domain, request['domain'])
+                updated = selfsteal.edge_configuration(request['domain'])
             elif path.suffix == '.json':
                 try:
                     value = json.loads(text)
@@ -686,6 +688,8 @@ def verify_and_export(request, job):
     time.sleep(5)
     checks = {}
     for name in c.CONTAINERS:
+        if name == 'vpn-hysteria2' and request.get('self_steal') and not stack.exists(name):
+            continue
         if name in selfsteal.NAMES and not request.get('self_steal'):
             continue
         if not stack.exists(name):
@@ -709,13 +713,14 @@ def verify_and_export(request, job):
     verify_manager(request)
     for role in stack.ROLES:
         verify_proxy_client(role, 'xray', request)
-        verify_proxy_client(role, 'hysteria2', request)
+        if stack.exists('vpn-hysteria2'):
+            verify_proxy_client(role, 'hysteria2', request)
         if request.get('self_steal'):
             for protocol in ['selfsteal-vless', 'selfsteal-xhttp', 'selfsteal-hysteria2']:
                 verify_proxy_client(role, protocol, request)
     if request.get('self_steal'):
         site = c.run(['curl', '--fail', '--silent', '--show-error', '--max-time', '30',
-                      'https://' + request['domain'] + '/'], timeout=40)
+                      'https://' + request['domain'] + ':' + str(c.selfsteal_port(request)) + '/'], timeout=40)
         if b'<title>Welcome</title>' not in site.stdout:
             raise RuntimeError('Сайт Self-Steal через публичный вход не прошёл проверку')
     for name, previous in checks.items():
@@ -726,14 +731,16 @@ def verify_and_export(request, job):
         rotation = json.loads((job / 'rotation-before.json').read_text())['value']
         database_sql("UPDATE setting SET value=" + sql_text(rotation) + " WHERE key='rotation_status';")
     c.write(c.ROOT / 'exports/network-profile.txt', 'Профиль: ' + c.network_profile(request)
-            + '\nSelf-Steal: ' + str(bool(request.get('self_steal'))) + '\nRelay: ' + str(request.get('relay_ip') or 'нет')
-            + '\nВ filtered публичны только TCP/UDP 443 (UDP при Self-Steal); старые VPN на других портах и панели локальны. '
-            'В all сохраняются старые порты. Старый XRay на TCP 443 доступен по прежнему SNI через общий вход. '
+            + '\nSelf-Steal: ' + str(bool(request.get('self_steal'))) + '\nПорт новых способов: ' + str(c.selfsteal_port(request)) + '\nRelay: ' + str(request.get('relay_ip') or 'нет')
+            + '\nВ filtered публичны TCP 443 Amnezia и отдельный TCP/UDP-порт Self-Steal; старые VPN на других портах и панели локальны. '
+            'В all сохраняются старые порты. Amnezia XRay сохраняет прямой TCP 443; новые способы используют отдельный порт. '
             'Новые конфиги имеют префикс selfsteal-. Ограничения скорости не установлены.\n')
     c.write(c.ROOT / 'exports/README.md', '# Доступы VPN\n\npersonal/ — личные доступы; shared/ — для остальных. Не раздавать весь архив: admin/ и legacy/ содержат другие действующие доступы.\n\nTXT импортировать целиком через вставку ключа; .conf в WireGuard/AmneziaWG, .ovpn в OpenVPN, Hysteria2 в совместимый клиент. Не все протоколы поддерживаются одним приложением.\n\nПроверка контейнеров не доказывает работоспособность VPN в сети провайдера. Проверить сайты с телефона через Wi-Fi и мобильную сеть. IPv6-маршрутизация для резервных туннелей отдельно не настроена и не испытана.\n')
     result = {'success': True, 'mode': request['mode'], 'containers': checks,
               'network_profile': c.network_profile(request), 'fingerprint': c.fingerprint(request),
               'self_steal': bool(request.get('self_steal')), 'relay_ip': request.get('relay_ip'),
+              'selfsteal_port': c.selfsteal_port(request) if request.get('self_steal') else None,
+              'protocol_priority': ['amnezia', 'new', 'reserve'],
               'new_protocol_checks': ['selfsteal-vless', 'selfsteal-xhttp', 'selfsteal-hysteria2'] if request.get('self_steal') else [],
               'external_vpn_protocols': ['xray'] if c.network_profile(request) == 'filtered' else ['xray', 'amneziawg', 'telegram', 'wireguard', 'openvpn', 'shadowsocks', 'hysteria2'],
               'panel_https': 200, 'client_network_tests': 'required',

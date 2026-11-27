@@ -47,10 +47,10 @@ class RelayTests(unittest.TestCase):
                 relay.assert_local_public_ip('8.8.8.8')
 
     def test_filtered_nat_exposes_only_acme_and_new_vpn_ports(self):
-        rules = relay.rules({**self.request, 'network_profile': 'filtered'})
+        rules = relay.rules({**self.request, 'network_profile': 'filtered', 'self_steal': True})
         incoming = [args for table, chain, args in rules if chain == 'VPS_RELAY_IN']
-        self.assertEqual(len(incoming), 3)
-        self.assertEqual({args[args.index('--dport') + 1] for args in incoming}, {'80', '443'})
+        self.assertEqual(len(incoming), 4)
+        self.assertEqual({args[args.index('--dport') + 1] for args in incoming}, {'80', '443', '8443'})
 
     def test_additional_backup_ports_are_validated(self):
         selected = dict(relay.selected_ports({**self.request, 'extra_tcp_ports': [12345]}))
@@ -102,6 +102,29 @@ class RelayTests(unittest.TestCase):
         self.assertIn('-A VPS_ORIGIN_GATE -j RETURN', script)
         with self.assertRaises(ValueError):
             relay.origin_gate_script({'ip': '8.8.8.8', 'relay_ip': '1.1.1.1'}, 'eth0;id')
+
+    def test_bundle_new_ports_do_not_displace_amnezia_or_drift_on_restore(self):
+        import tarfile
+        import tempfile
+        parent = Path(__file__).resolve().parents[3] / 'private-vpn/server-settings/tools/test-runtime'
+        parent.mkdir(parents=True, exist_ok=True)
+        for existing, expected in [(None, 8444), (8445, 8445)]:
+            containers = [{'Name': '/amnezia-xray', 'HostConfig': {'NetworkMode': 'bridge',
+                'PortBindings': {'443/tcp': [{'HostIp': '0.0.0.0', 'HostPort': '8443'}]}}}]
+            if existing:
+                containers.append({'Name': '/vpn-edge', 'HostConfig': {'NetworkMode': 'bridge',
+                    'PortBindings': {'443/tcp': [{'HostIp': '0.0.0.0', 'HostPort': str(existing)}]}}})
+            with tempfile.TemporaryDirectory(dir=parent) as folder:
+                manifest = Path(folder) / 'manifest.json'
+                manifest.write_text(json.dumps({'format': 1, 'containers': containers}))
+                bundle = Path(folder) / 'bundle.tar.gz'
+                with tarfile.open(bundle, 'w:gz') as archive:
+                    archive.add(manifest, arcname='manifest.json')
+                with patch('sys.stdout', new_callable=io.StringIO):
+                    settings = topology.bundle_settings(bundle, {'self_steal': True})
+                self.assertEqual(settings['selfsteal_port'], expected)
+                self.assertEqual(settings['extra_tcp_ports'], [8443])
+                self.assertEqual(settings['restore_shared_edge'], bool(existing))
 
     def test_topology_rejects_same_server_and_keeps_keys_local(self):
         target = SimpleNamespace(address='8.8.8.8', port=22)

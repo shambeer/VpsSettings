@@ -20,7 +20,7 @@ def tls_client(identifier, request, path=None):
         user['flow'] = 'xtls-rprx-vision'
     return {'log': {'loglevel': 'warning'}, 'inbounds': [{'listen': '127.0.0.1', 'port': 10808,
             'protocol': 'socks', 'settings': {'udp': True}}], 'outbounds': [{'protocol': 'vless',
-            'settings': {'vnext': [{'address': request['domain'], 'port': 443, 'users': [user]}]},
+            'settings': {'vnext': [{'address': request['domain'], 'port': c.selfsteal_port(request), 'users': [user]}]},
             'streamSettings': transport}]}
 
 
@@ -31,7 +31,7 @@ def link(identifier, request, role, path=None):
         query.update({'path': path, 'mode': 'packet-up'})
     else:
         query['flow'] = 'xtls-rprx-vision'
-    return 'vless://' + identifier + '@' + request['domain'] + ':443?' + urlencode(query) + '#' + quote('SelfSteal-' + role)
+    return 'vless://' + identifier + '@' + request['domain'] + ':' + str(c.selfsteal_port(request)) + '?' + urlencode(query) + '#' + quote('SelfSteal-' + role)
 
 
 def configuration(request, clients, path):
@@ -63,12 +63,9 @@ def edge_configuration(domain):
     c.validate_domain(domain)
     return ('global\n  log stdout format raw local0\n'
             'defaults\n  mode tcp\n  timeout connect 10s\n  timeout client 1h\n  timeout server 1h\n'
-            'frontend tls_entry\n  bind :443\n  tcp-request inspect-delay 5s\n'
-            '  tcp-request content accept if { req.ssl_hello_type 1 }\n'
-            '  use_backend selfsteal if { req.ssl_sni -i ' + domain + ' }\n'
-            '  default_backend legacy\n'
-            'backend selfsteal\n  server selfsteal vpn-selfsteal-xray:443\n'
-            'backend legacy\n  server legacy amnezia-xray:443\n')
+            'frontend tls_entry\n  bind :443\n'
+            '  default_backend selfsteal\n'
+            'backend selfsteal\n  server selfsteal vpn-selfsteal-xray:443\n')
 
 
 def export_access(request):
@@ -84,10 +81,10 @@ def export_access(request):
     for role, secret in hy['auth']['userpass'].items():
         if role not in stack.ROLES:
             raise RuntimeError('Неизвестная роль доступа Hysteria2 Self-Steal')
-        client = {'server': request['domain'] + ':443', 'auth': role + ':' + secret,
+        client = {'server': request['domain'] + ':' + str(c.selfsteal_port(request)), 'auth': role + ':' + secret,
                   'tls': {'sni': request['domain']}, 'obfs': hy['obfs'], 'socks5': {'listen': '127.0.0.1:1080'}}
         query = {'sni': request['domain'], 'obfs': 'salamander', 'obfs-password': hy['obfs']['salamander']['password']}
-        uri = 'hysteria2://' + quote(role + ':' + secret, safe=':') + '@' + request['domain'] + ':443/?' + urlencode(query) + '#' + role
+        uri = 'hysteria2://' + quote(role + ':' + secret, safe=':') + '@' + request['domain'] + ':' + str(c.selfsteal_port(request)) + '/?' + urlencode(query) + '#' + role
         c.export_access(role, 'selfsteal-hysteria2', client, uri)
 
 
@@ -98,25 +95,7 @@ def install(request):
             raise RuntimeError('Восстановлена неполная схема Self-Steal; автоматическая перезапись запрещена')
         export_access(request)
         return
-    legacy = c.docker_json('inspect', 'amnezia-xray')[0]
-    if any(item.get('HostIp') not in ['127.0.0.1', '::1'] for item in legacy['HostConfig']['PortBindings'].get('443/tcp', [])):
-        raise RuntimeError('Старый XRay должен иметь закрытую публикацию TCP 443 перед добавлением маршрутизатора')
-    local = c.ROOT / 'config/xray/server.json'
-    if local.exists():
-        legacy_config = json.loads(local.read_text())
-    else:
-        legacy_config = json.loads(c.run(['docker', 'exec', 'amnezia-xray', 'cat', '/opt/amnezia/xray/server.json']).stdout)
-    for inbound in legacy_config.get('inbounds', []):
-        if inbound.get('port') != 443:
-            continue
-        stream = inbound.get('streamSettings', {})
-        if inbound.get('protocol') != 'vless' or stream.get('network', 'tcp') not in ['tcp', 'raw']:
-            raise RuntimeError('Автоматическое совместное использование TCP 443 поддерживает прежний VLESS RAW/REALITY')
-        if stream.get('security') == 'tls' or request['domain'] in stream.get('realitySettings', {}).get('serverNames', []):
-            raise RuntimeError('SNI старого XRay конфликтует с Self-Steal; требуется отдельный домен и явная настройка маршрута')
     stack.network()
-    if stack.NETWORK not in legacy['NetworkSettings']['Networks']:
-        c.api('POST', '/networks/' + stack.NETWORK + '/connect', {'Container': 'amnezia-xray', 'EndpointConfig': {}})
     clients = [{'id': str(uuid.uuid4()), 'email': role + '@local'} for role in stack.ROLES]
     path = '/' + secrets.token_hex(16) + '/'
     xray = stack.configuration('selfsteal-xray', configuration(request, clients, path))
@@ -130,7 +109,7 @@ def install(request):
     stack.create('vpn-selfsteal-site', stack.image('nginx'), mounts=[
         stack.bind(site, '/etc/nginx/conf.d/default.conf'), stack.bind(site.parent / 'index.html', '/usr/share/nginx/html/index.html')])
     edge = stack.configuration('selfsteal-edge', edge_configuration(request['domain']), 'cfg')
-    stack.create('vpn-edge', stack.image('haproxy'), ports={'443/tcp': stack.published(443)},
+    stack.create('vpn-edge', stack.image('haproxy'), ports={'443/tcp': stack.published(c.selfsteal_port(request))},
                  mounts=[stack.bind(edge, '/usr/local/etc/haproxy/haproxy.cfg')], request=request)
     certificate = '/etc/letsencrypt/live/' + request['domain']
     hy = {'listen': ':443', 'tls': {'cert': certificate + '/fullchain.pem', 'key': certificate + '/privkey.pem'},
@@ -139,6 +118,6 @@ def install(request):
           'masquerade': {'type': 'proxy', 'proxy': {'url': 'http://vpn-selfsteal-site:8080/', 'rewriteHost': True}}}
     hysteria = stack.configuration('selfsteal-hysteria', hy)
     stack.create('vpn-selfsteal-hysteria2', stack.image('hysteria'), ['server', '-c', '/etc/vpn/server.json'],
-                 {'443/udp': stack.published(443)}, [stack.bind(hysteria.parent, '/etc/vpn'),
+                 {'443/udp': stack.published(c.selfsteal_port(request))}, [stack.bind(hysteria.parent, '/etc/vpn'),
                  stack.bind('/etc/letsencrypt', '/etc/letsencrypt')], request=request)
     export_access(request)

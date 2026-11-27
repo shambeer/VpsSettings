@@ -287,7 +287,7 @@ def main():
     public_ip = entry.address if entry else target.address
     domain = c.validate_domain(ask('Домен входа; заранее направьте A-запись только на ' + public_ip))
     camouflage = c.validate_domain(ask('HTTPS-сайт для новых REALITY/Telegram-конфигов: TLS 1.3 и HTTP/2, не домен этого VPS', ''))
-    ui.menu('Публикация портов', [('1', 'Только TCP/UDP 443 — остальные старые VPN и панели локальны'),
+    ui.menu('Публикация портов', [('1', 'TCP 443 Amnezia + отдельный порт новых способов; остальные локальны'),
                                 ('2', 'Сохранить доступность старых VPN-портов и панели 3DP')])
     profile_choice = ui.select('Сетевой профиль', ['1', '2'], '2' if scheme['self_steal'] else '1', read=ask)
     network_profile = 'filtered' if profile_choice == '1' else 'all'
@@ -302,7 +302,7 @@ def main():
     print('Приватный SSH-ключ останется на этом компьютере. Парольный вход отключится после проверки ключа.')
     print('Сетевой профиль: ' + network_profile + '. Маскировка не устраняет блокировку всего IP.')
     print('Основной VPS: ' + target.address + '; вход: ' + public_ip + '; домен: ' + domain)
-    print('Старые VPN сохраняются. Дополнительный Self-Steal: ' + str(scheme['self_steal']))
+    print('Приоритет: Amnezia → новые способы → остальные. Порт новых способов: ' + str(c.selfsteal_port(scheme)))
     if entry:
         print('Relay будет пересылать TCP/UDP без расшифровки; дополнительный участок может увеличить задержку.')
     print('Подтверждение также означает согласие с условиями Let’s Encrypt: https://letsencrypt.org/repository/')

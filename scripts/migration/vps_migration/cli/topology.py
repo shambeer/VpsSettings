@@ -35,6 +35,7 @@ def bundle_settings(path, scheme):
     if manifest.get('format') != 1:
         raise ValueError('Поддерживается полная копия формата 1')
     tcp, udp = set(), set()
+    preferred_port = 8443
     has_selfsteal = any(item['Name'].lstrip('/') == 'vpn-edge' for item in manifest['containers'])
     self_steal = scheme.get('self_steal') or has_selfsteal
     if scheme.get('relay_ip') and any(item.get('EnableIPv6') for item in manifest.get('networks', {}).values()):
@@ -52,8 +53,17 @@ def bundle_settings(path, scheme):
                     raise ValueError('Недопустимый порт в копии')
                 if item['Name'].lstrip('/') == '3x-ui' and inside == '2053/tcp':
                     continue
+                if item['Name'].lstrip('/') in ['vpn-edge', 'vpn-selfsteal-hysteria2']:
+                    if item['Name'].lstrip('/') == 'vpn-edge' and port != 443:
+                        preferred_port = port
+                    continue
                 (tcp if inside.endswith('/tcp') else udp).add(port)
-    return {'self_steal': self_steal, 'extra_tcp_ports': sorted(tcp), 'extra_udp_ports': sorted(udp)}
+    occupied = tcp | udp
+    port = next((value for value in [preferred_port, *range(8443, 8544)] if value not in occupied and value != 443), None)
+    if port is None:
+        raise ValueError('Не найден свободный порт для новых способов в диапазоне 8443–8543')
+    return {'self_steal': self_steal, 'selfsteal_port': port, 'restore_shared_edge': has_selfsteal,
+            'extra_tcp_ports': sorted(tcp), 'extra_udp_ports': sorted(udp)}
 
 
 def save_relay_instructions(output, entry, job):

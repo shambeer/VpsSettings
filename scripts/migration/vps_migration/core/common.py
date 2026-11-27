@@ -51,6 +51,13 @@ def fingerprint(request):
     return value
 
 
+def selfsteal_port(request):
+    port = request.get('selfsteal_port', 8443)
+    if not isinstance(port, int) or isinstance(port, bool) or not 1024 <= port <= 65535:
+        raise ValueError('Недопустимый отдельный порт Self-Steal')
+    return port
+
+
 def exposure_bindings(name, bindings, request):
     if request.get('relay_ip'):
         bindings = copy.deepcopy(bindings)
@@ -64,14 +71,18 @@ def exposure_bindings(name, bindings, request):
         bindings = copy.deepcopy(bindings)
         bindings['2053/tcp'] = [{'HostIp': '127.0.0.1', 'HostPort': port}
                                 for port in sorted({str(value['HostPort']) for value in bindings['2053/tcp'] or []})]
-    if request.get('self_steal') and name == 'amnezia-xray':
-        result = copy.deepcopy(bindings)
-        if '443/tcp' not in result:
-            raise ValueError('Совместное использование TCP 443 требует старый XRay на внутреннем TCP 443')
-        result['443/tcp'] = [{'HostIp': '127.0.0.1', 'HostPort': '1443'}]
-        if '443/udp' in result:
-            result['443/udp'] = [{'HostIp': '127.0.0.1', 'HostPort': '1443'}]
-        return result
+    if request.get('self_steal') and name in ['vpn-edge', 'vpn-selfsteal-hysteria2']:
+        bindings = copy.deepcopy(bindings)
+        for values in bindings.values():
+            for value in values or []:
+                value['HostPort'] = str(selfsteal_port(request))
+    if request.get('restore_shared_edge') and name == 'amnezia-xray':
+        bindings = copy.deepcopy(bindings)
+        for inside, values in bindings.items():
+            if inside in ['443/tcp', '443/udp']:
+                for value in values or []:
+                    if value.get('HostIp') in ['127.0.0.1', '::1'] and str(value['HostPort']) == '1443':
+                        value.update(HostIp='0.0.0.0', HostPort='443')
     if network_profile(request) == 'all':
         return copy.deepcopy(bindings)
     result = {}

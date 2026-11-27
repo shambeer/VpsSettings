@@ -325,6 +325,8 @@ def fresh(request):
 
 def reserves(request, reference=None):
     missing = [name for name in ['vpn-wireguard', 'vpn-openvpn', 'vpn-shadowsocks', 'vpn-hysteria2'] if not exists(name)]
+    if request.get('self_steal') and 'vpn-hysteria2' in missing:
+        missing.remove('vpn-hysteria2')
     if not missing:
         return
     reference = reference or tools_image()
