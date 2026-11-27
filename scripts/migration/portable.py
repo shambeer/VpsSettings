@@ -65,6 +65,9 @@ def main():
 if __name__ == '__main__':
     try:
         sys.exit(main())
+    except KeyboardInterrupt:
+        print('\nОперация прервана пользователем. Уже запущенная серверная задача может продолжать работу.', file=sys.stderr)
+        sys.exit(130)
     except Exception as error:
         print('Ошибка переносимого пакета: ' + str(error), file=sys.stderr)
         sys.exit(1)

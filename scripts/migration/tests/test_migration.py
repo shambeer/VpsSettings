@@ -26,6 +26,20 @@ import build_portable
 
 
 class MigrationTests(unittest.TestCase):
+    def test_quoted_local_paths(self):
+        path = Path(__file__).resolve()
+        for value in [str(path), '"' + str(path) + '"', "'" + str(path) + "'"]:
+            self.assertEqual(migrate.local_path(value), path)
+
+    def test_kernel_modules_are_not_copied_between_kernels(self):
+        containers = [{'Mounts': [{'Type': 'bind', 'Source': '/lib/modules'},
+                                  {'Type': 'bind', 'Source': '/usr/lib/modules'}]}]
+        with patch.object(Path, 'exists', return_value=False):
+            self.assertEqual(snapshot.host_roots(containers), [])
+        containers[0]['Mounts'].append({'Type': 'bind', 'Source': '/etc/shadow'})
+        with patch.object(Path, 'exists', return_value=False), self.assertRaises(RuntimeError):
+            snapshot.host_roots(containers)
+
     def setUp(self):
         self.repository = Path(__file__).resolve().parents[3]
         parent = self.repository / 'private-vpn/server-settings/tools/test-runtime'

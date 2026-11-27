@@ -23,13 +23,20 @@ def ask(prompt, default=None):
     return value or default
 
 
+def local_path(value):
+    value = str(value).strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in ['"', "'"]:
+        value = value[1:-1]
+    return Path(value).expanduser().resolve()
+
+
 class Connection:
     def __init__(self, address, port, key):
         self.address = c.validate_ip(address)
         self.port = int(port)
         if not 1 <= self.port <= 65535:
             raise ValueError('Некорректный SSH-порт')
-        self.key = Path(key).expanduser().resolve()
+        self.key = local_path(key)
         if not self.key.is_file():
             raise ValueError('Файл приватного SSH-ключа не найден')
         self.options = ['-i', str(self.key), '-o', 'IdentitiesOnly=yes', '-o', 'StrictHostKeyChecking=ask',
@@ -173,7 +180,7 @@ def main():
         if selection == '1':
             bundle = bundle_from_source(output)
         elif selection == '2':
-            bundle = Path(ask('Путь к migration-bundle.tar.gz')).expanduser().resolve()
+            bundle = local_path(ask('Путь к migration-bundle.tar.gz'))
             if not bundle.is_file():
                 raise ValueError('Архив не найден')
             expected = ask('Ожидаемый SHA-256 из backup-result.json').lower()

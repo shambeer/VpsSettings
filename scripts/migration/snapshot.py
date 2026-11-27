@@ -51,6 +51,8 @@ def host_roots(containers):
             if mount['Type'] != 'bind':
                 continue
             path = Path(mount['Source'])
+            if kernel_modules_mount(path):
+                continue
             if not any(path == item or path.is_relative_to(item) for item in paths):
                 paths.append(path)
     paths = sorted(set(paths), key=lambda path: len(path.parts))
@@ -65,6 +67,10 @@ def host_roots(containers):
                 raise RuntimeError('Bind mount отсутствует: ' + str(path))
             accepted.append(path)
     return accepted
+
+
+def kernel_modules_mount(path):
+    return Path(path) in [Path('/lib/modules'), Path('/usr/lib/modules')]
 
 
 def backup(request, job):
@@ -272,6 +278,8 @@ def restore_containers(manifest, request):
             item = {'Type': mount['Type'], 'Source': mount.get('Name') if mount['Type'] == 'volume' else mount['Source'],
                     'Target': mount['Destination'], 'ReadOnly': not mount['RW']}
             if mount['Type'] == 'bind':
+                if kernel_modules_mount(item['Source']) and not Path(item['Source']).is_dir():
+                    raise RuntimeError('На целевом сервере отсутствует каталог модулей его ядра: ' + item['Source'])
                 updated = item['Source'].replace(manifest['source_domain'], request['domain'])
                 if updated != item['Source']:
                     if not Path(updated).exists():
