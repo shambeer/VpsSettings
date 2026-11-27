@@ -257,6 +257,12 @@ def restore_containers(manifest, request):
         host.pop('Links', None)
         host.pop('VolumesFrom', None)
         host.pop('ConsoleSize', None)
+        if c.network_profile(request) == 'filtered' and (host['NetworkMode'] == 'host' or host['NetworkMode'].startswith('container:')):
+            raise RuntimeError('Нельзя закрыть порты host-network контейнера профилем filtered: ' + name)
+        if host.get('PortBindings') or name == 'amnezia-xray':
+            host['PortBindings'] = c.exposure_bindings(name, host.get('PortBindings') or {}, request)
+        if c.network_profile(request) == 'filtered':
+            host['PublishAllPorts'] = False
         host['RestartPolicy'] = {'Name': 'no', 'MaximumRetryCount': 0}
         host['Binds'] = []
         host['Mounts'] = []
@@ -296,6 +302,23 @@ def restore_containers(manifest, request):
             if network != primary:
                 c.api('POST', '/networks/' + quote(network, safe='') + '/connect',
                       {'Container': created['Id'], 'EndpointConfig': {} if network == 'bridge' else endpoint(settings)})
+
+    if c.network_profile(request) == 'filtered':
+        names = {item['Name'].lstrip('/') for item in manifest['containers']}
+        if {'3dp-backend', '3x-ui'}.issubset(names):
+            backend = c.docker_json('inspect', '3dp-backend')[0]
+            panel = c.docker_json('inspect', '3x-ui')[0]
+            backend_networks = backend['NetworkSettings']['Networks']
+            panel_networks = panel['NetworkSettings']['Networks']
+            usable = [name for name in backend_networks if name not in ['bridge', 'host', 'none']]
+            network = next((name for name in usable if name in panel_networks), None)
+            if not network:
+                network = usable[0] if usable else 'vps-stack-private'
+                if not usable:
+                    c.api('POST', '/networks/create', {'Name': network, 'Driver': 'bridge', 'Internal': True})
+                    c.api('POST', '/networks/' + network + '/connect', {'Container': '3dp-backend', 'EndpointConfig': {}})
+                c.api('POST', '/networks/' + quote(network, safe='') + '/connect',
+                      {'Container': '3x-ui', 'EndpointConfig': {'Aliases': ['3x-ui']}})
 
 
 def endpoint(settings):

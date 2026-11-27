@@ -2,6 +2,7 @@ import argparse
 import base64
 import datetime
 import ipaddress
+import hashlib
 from http.cookies import SimpleCookie
 import http.client
 import json
@@ -11,6 +12,7 @@ import platform
 import re
 import shutil
 import socket
+import ssl
 import sqlite3
 import sys
 import time
@@ -91,14 +93,42 @@ def firewall(request):
     server_port = os.environ.get('SSH_CONNECTION', '').split()
     server_port = int(server_port[-1]) if server_port else request.get('ssh_server_port', request['ssh_port'])
     c.run(['ufw', 'allow', str(server_port) + '/tcp'])
-    for port in [80, 443, 50553, 6659, 8388, 8389]:
+    tcp_ports = [80, 443]
+    udp_ports = []
+    if c.network_profile(request) == 'all':
+        tcp_ports += [50553, 6659, 8388, 8389]
+        udp_ports = [46872, 51820, 1194, 2443, 8388, 8389]
+    for port in tcp_ports:
         c.run(['ufw', 'allow', str(port) + '/tcp'])
-    for port in [46872, 51820, 1194, 2443, 8388, 8389]:
+    for port in udp_ports:
         c.run(['ufw', 'allow', str(port) + '/udp'])
     c.run(['ufw', 'default', 'deny', 'incoming'])
     c.run(['ufw', 'default', 'allow', 'outgoing'])
     c.run(['ufw', '--force', 'enable'])
     c.run(['systemctl', 'restart', 'docker'])
+
+
+def check_camouflage(request, domain=None, target=None):
+    domain = c.validate_domain(domain or request['camouflage'])
+    target = target or domain + ':443'
+    endpoint = urlsplit('tls://' + target)
+    if not endpoint.hostname or endpoint.port != 443:
+        raise RuntimeError('В этой версии проверка REALITY поддерживает HTTPS-цель на порту 443')
+    if domain == request['domain'] or endpoint.hostname == request['domain']:
+        raise RuntimeError('Сайт REALITY не должен указывать на домен этого VPS: это создаёт петлю соединений')
+    addresses = {item[4][0] for item in socket.getaddrinfo(endpoint.hostname, 443, family=socket.AF_INET, type=socket.SOCK_STREAM)}
+    if request['ip'] in addresses:
+        raise RuntimeError('Цель REALITY указывает на этот VPS; выберите другой HTTPS-сайт')
+    result = c.run(['openssl', 's_client', '-4', '-connect', target, '-servername', domain,
+                    '-tls1_3', '-alpn', 'h2', '-verify_hostname', domain,
+                    '-verify_return_error', '-no_ign_eof'], content=b'', timeout=25, check=False)
+    text = (result.stdout + result.stderr).decode(errors='replace')
+    supported = result.returncode == 0 and 'TLSv1.3' in text and bool(re.search(r'ALPN protocol:\s*h2(?:\s|$)', text))
+    if c.JOB:
+        name = 'camouflage-' + hashlib.sha256(domain.encode()).hexdigest()[:12] + '.json'
+        c.write(c.JOB / name, {'domain': domain, 'target': target, 'tls13_h2_and_certificate_verified': supported})
+    if not supported:
+        raise RuntimeError('HTTPS-цель не прошла проверку сертификата, TLS 1.3 и HTTP/2; выберите другой сайт')
 
 
 def certificate(request):
@@ -275,6 +305,29 @@ def sql_text(value):
     return "convert_from(decode('" + encoded + "','base64'),'UTF8')"
 
 
+def private_panel_url(value, manifest, request):
+    if c.network_profile(request) != 'filtered' or not isinstance(value, str):
+        return value
+    parts = urlsplit(value)
+    owned = [manifest['source_ip'], manifest['source_domain'], request['ip'], request['domain']]
+    if parts.hostname not in owned:
+        return value
+    if parts.scheme != 'http':
+        raise RuntimeError('Локальный HTTPS API панели требует отдельной настройки TLS; используйте профиль all')
+    panel = next((item for item in manifest['containers'] if item['Name'].lstrip('/') == '3x-ui'), None)
+    if not panel:
+        return value
+    port = parts.port or 80
+    internal = None
+    for exposed, bindings in panel['HostConfig'].get('PortBindings', {}).items():
+        if exposed.endswith('/tcp') and any(str(item['HostPort']) == str(port) for item in bindings or []):
+            internal = exposed.split('/')[0]
+    if not internal:
+        raise RuntimeError('Не найден внутренний порт API 3x-ui для закрытого профиля')
+    credentials = parts.netloc.rsplit('@', 1)[0] + '@' if '@' in parts.netloc else ''
+    return urlunsplit((parts.scheme, credentials + '3x-ui:' + internal, parts.path, parts.query, parts.fragment))
+
+
 def rewrite_database(manifest, request):
     rotation = manifest.get('rotation_original') or database_sql("SELECT value FROM setting WHERE key='rotation_status';")
     c.write(c.JOB / 'rotation-before.json', {'value': rotation})
@@ -299,6 +352,8 @@ def rewrite_database(manifest, request):
                 column = field['column_name']
                 before = row.get(column)
                 after = replace_endpoint(before, manifest['source_ip'], manifest['source_domain'], request, column)
+                if table == 'node' and column == 'url':
+                    after = private_panel_url(after, manifest, request)
                 if after == before:
                     continue
                 value = json.dumps(after, ensure_ascii=False) if field['udt_name'] in ['json', 'jsonb'] else after
@@ -377,8 +432,9 @@ def export_existing_xray(request):
         if inbound.get('protocol') != 'vless' or inbound.get('streamSettings', {}).get('security') != 'reality':
             continue
         settings = inbound['streamSettings']['realitySettings']
+        check_camouflage(request, settings['serverNames'][0], settings.get('target', settings.get('dest')))
         reality = {'serverName': settings['serverNames'][0], 'publicKey': c.public_x25519(settings['privateKey']),
-                   'shortId': settings['shortIds'][0], 'fingerprint': 'firefox'}
+                   'shortId': settings['shortIds'][0], 'fingerprint': c.fingerprint(request)}
         for index, client in enumerate(inbound['settings']['clients']):
             label = labels.get(client['id'], '').lower()
             role = 'personal' if 'personal' in label else 'shared' if 'shared' in label else 'legacy/user-' + str(index + 1)
@@ -488,11 +544,25 @@ def security_commit(job):
     c.write(job / 'security-state.json', state)
 
 
+class LocalPanelConnection(http.client.HTTPSConnection):
+    def __init__(self, domain):
+        self.tls_context = ssl.create_default_context()
+        super().__init__(domain, 6659, timeout=20, context=self.tls_context)
+
+    def connect(self):
+        transport = socket.create_connection(('127.0.0.1', self.port), self.timeout)
+        try:
+            self.sock = self.tls_context.wrap_socket(transport, server_hostname=self.host)
+        except Exception:
+            transport.close()
+            raise
+
+
 def verify_manager(request):
     inspection = c.docker_json('inspect', '3dp-backend')[0]
     environment = dict(item.split('=', 1) for item in inspection['Config']['Env'] if '=' in item)
     credentials = {'login': environment['ADMIN_LOGIN'], 'password': environment['ADMIN_PASSWORD']}
-    connection = http.client.HTTPSConnection(request['domain'], 6659, timeout=20)
+    connection = LocalPanelConnection(request['domain'])
     for attempt in range(30):
         try:
             connection.request('POST', '/api/auth/login', json.dumps(credentials),
@@ -503,7 +573,7 @@ def verify_manager(request):
                 break
         except (OSError, http.client.HTTPException):
             connection.close()
-            connection = http.client.HTTPSConnection(request['domain'], 6659, timeout=20)
+            connection = LocalPanelConnection(request['domain'])
         time.sleep(2)
     else:
         raise RuntimeError('Не удалось проверить вход в 3DP')
@@ -545,7 +615,11 @@ def verify_proxy_client(role, protocol, request):
         command = ['run', '-c', '/etc/check/client.json']
     else:
         config['socks5'] = {'listen': '0.0.0.0:10808'}
-        reference = c.docker_json('inspect', 'vpn-hysteria2')[0]['Image']
+        server = c.docker_json('inspect', 'vpn-hysteria2')[0]
+        reference = server['Image']
+        if c.network_profile(request) == 'filtered':
+            address = server['NetworkSettings']['Networks'][stack.NETWORK]['IPAddress']
+            config['server'] = address + ':2443'
         entrypoint = None
         command = ['client', '-c', '/etc/check/client.json']
     name = 'vps-check-' + protocol + '-' + role + '-' + c.JOB.name[-8:]
@@ -589,6 +663,7 @@ def verify_and_export(request, job):
         c.write(job / 'verification.json', checks)
         raise RuntimeError('Не все контейнеры запущены; подробности в verification.json')
     response = c.run(['curl', '--silent', '--show-error', '--max-time', '20', '--output', '/dev/null',
+                      '--resolve', request['domain'] + ':6659:127.0.0.1',
                       '--write-out', '%{http_code}', 'https://' + request['domain'] + ':6659/'])
     if response.stdout.strip() != b'200':
         raise RuntimeError('HTTPS панели 3DP не прошёл проверку')
@@ -603,8 +678,11 @@ def verify_and_export(request, job):
     if (job / 'rotation-before.json').exists():
         rotation = json.loads((job / 'rotation-before.json').read_text())['value']
         database_sql("UPDATE setting SET value=" + sql_text(rotation) + " WHERE key='rotation_status';")
+    c.write(c.ROOT / 'exports/network-profile.txt', 'Профиль: ' + c.network_profile(request) + '\nВ filtered удалённо доступен только XRay TCP 443. Остальные VPN и панели слушают loopback; их экспортированные конфиги не работают удалённо без изменения публикации портов. SSH и HTTP для ACME сохранены. Ограничения скорости не установлены.\n')
     c.write(c.ROOT / 'exports/README.md', '# Доступы VPN\n\npersonal/ — личные доступы; shared/ — для остальных. Не раздавать весь архив: admin/ и legacy/ содержат другие действующие доступы.\n\nTXT импортировать целиком через вставку ключа; .conf в WireGuard/AmneziaWG, .ovpn в OpenVPN, Hysteria2 в совместимый клиент. Не все протоколы поддерживаются одним приложением.\n\nПроверка контейнеров не доказывает работоспособность VPN в сети провайдера. Проверить сайты с телефона через Wi-Fi и мобильную сеть. IPv6-маршрутизация для резервных туннелей отдельно не настроена и не испытана.\n')
     result = {'success': True, 'mode': request['mode'], 'containers': checks,
+              'network_profile': c.network_profile(request), 'fingerprint': c.fingerprint(request),
+              'external_vpn_protocols': ['xray'] if c.network_profile(request) == 'filtered' else ['xray', 'amneziawg', 'telegram', 'wireguard', 'openvpn', 'shadowsocks', 'hysteria2'],
               'panel_https': 200, 'client_network_tests': 'required',
               'manager_login_and_protected_api': True,
               'vless_and_hysteria_https_for_both_roles': True,
@@ -649,6 +727,8 @@ def main():
     c.validate_ip(request['ip'])
     c.validate_domain(request['domain'])
     c.validate_domain(request['camouflage'])
+    c.network_profile(request)
+    c.fingerprint(request)
     if arguments.action == 'preflight':
         preflight(request, request['mode'] != 'backup')
         progress('Предварительная проверка пройдена')
@@ -659,6 +739,9 @@ def main():
     else:
         preflight(request)
         packages()
+        if request['mode'] == 'fresh':
+            progress('Проверка HTTPS-цели REALITY: сертификат, TLS 1.3, HTTP/2 и отсутствие петли')
+            check_camouflage(request)
         progress('Настройка firewall и маршрутизации')
         firewall(request)
         manifest = None

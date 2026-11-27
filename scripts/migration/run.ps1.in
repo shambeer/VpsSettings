@@ -1,0 +1,28 @@
+param(
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [string[]]$MigrationArguments
+)
+
+$ErrorActionPreference = 'Stop'
+if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
+    throw 'Python 3.11+ is required.'
+}
+
+[Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+$packagePath = Join-Path ([IO.Path]::GetTempPath()) ('vps-migration-' + [guid]::NewGuid().ToString('N') + '.pyz')
+try {
+    Invoke-WebRequest -UseBasicParsing -Uri '@PACKAGE_URL@' -OutFile $packagePath
+    $actualHash = (Get-FileHash -LiteralPath $packagePath -Algorithm SHA256).Hash
+    if ($actualHash -ne '@PACKAGE_SHA256@') {
+        throw 'SHA256 mismatch; launch cancelled.'
+    }
+    & python -X utf8 $packagePath @MigrationArguments
+    if ($LASTEXITCODE -ne 0) {
+        throw ('Migration exited with code ' + $LASTEXITCODE)
+    }
+}
+finally {
+    if (Test-Path -LiteralPath $packagePath) {
+        Remove-Item -LiteralPath $packagePath -Force
+    }
+}

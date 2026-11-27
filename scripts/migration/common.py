@@ -1,4 +1,5 @@
 import base64
+import copy
 import hashlib
 import http.client
 import ipaddress
@@ -33,6 +34,42 @@ def validate_domain(value):
             for part in value.split('.')):
         raise ValueError('Нужен домен без схемы, порта и пути; IDN указывать в punycode')
     return value
+
+
+def network_profile(request):
+    profile = request.get('network_profile', 'all')
+    if profile not in ['filtered', 'all']:
+        raise ValueError('Неизвестный сетевой профиль')
+    return profile
+
+
+def fingerprint(request):
+    value = request.get('fingerprint', 'firefox')
+    if value not in ['firefox', 'safari']:
+        raise ValueError('Для REALITY поддерживаются fingerprint firefox и safari')
+    return value
+
+
+def exposure_bindings(name, bindings, request):
+    if network_profile(request) == 'all':
+        return copy.deepcopy(bindings)
+    result = {}
+    for port, values in bindings.items():
+        accepted = []
+        seen = set()
+        for value in values or []:
+            address = '127.0.0.1'
+            if name == 'amnezia-xray' and port == '443/tcp' and str(value['HostPort']) == '443':
+                address = '0.0.0.0'
+            key = (address, str(value['HostPort']))
+            if key not in seen:
+                accepted.append({'HostIp': address, 'HostPort': key[1]})
+                seen.add(key)
+        result[port] = accepted
+    if name == 'amnezia-xray' and not any(
+            item['HostIp'] == '0.0.0.0' for item in result.get('443/tcp', [])):
+        raise ValueError('Профиль filtered требует XRay на внешнем TCP 443; для других портов выберите all')
+    return result
 
 
 def write(path, value):
@@ -118,12 +155,13 @@ def export_access(role, protocol, config=None, link=None, extension='json'):
 
 def vless_link(identifier, domain, port, reality, title):
     query = urlencode({'encryption': 'none', 'security': 'reality', 'sni': reality['serverName'],
-                       'fp': 'firefox', 'pbk': reality['publicKey'], 'sid': reality['shortId'],
+                       'fp': fingerprint(reality), 'pbk': reality['publicKey'], 'sid': reality['shortId'],
                        'type': 'tcp', 'flow': 'xtls-rprx-vision'})
     return 'vless://' + identifier + '@' + domain + ':' + str(port) + '?' + query + '#' + quote(title)
 
 
 def xray_client(identifier, domain, port, reality):
+    reality = {**reality, 'fingerprint': fingerprint(reality)}
     return {'log': {'loglevel': 'warning'}, 'inbounds': [{'listen': '127.0.0.1', 'port': 10808,
             'protocol': 'socks', 'settings': {'udp': True}}], 'outbounds': [{'protocol': 'vless',
             'settings': {'vnext': [{'address': domain, 'port': port, 'users': [{'id': identifier,

@@ -11,7 +11,7 @@ HERE = Path(__file__).resolve().parent
 REPOSITORY = HERE.parent.parent
 
 
-def build(output, repository='shambeer/VpsSettings'):
+def build(output, repository='shambeer/VpsMigration'):
     if not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', repository):
         raise ValueError('Нужен адрес репозитория в формате owner/name')
     output = Path(output).resolve()
@@ -36,14 +36,16 @@ def build(output, repository='shambeer/VpsSettings'):
     (output / 'run.sh').write_text(launcher, encoding='utf-8', newline='\n')
     launcher_url = 'https://github.com/' + repository + '/releases/download/' + tag + '/run.sh'
     (output / 'run-linux.txt').write_text('curl -fsSL ' + launcher_url + ' | bash\n', encoding='utf-8')
-    command = '& { $p=Join-Path ([IO.Path]::GetTempPath()) ("vps-migration-"+[guid]::NewGuid().ToString("N")+".pyz"); '
-    command += "Invoke-WebRequest -UseBasicParsing -Uri '" + url + "' -OutFile $p; "
-    command += "if ((Get-FileHash -LiteralPath $p -Algorithm SHA256).Hash -ne '" + digest + "') { throw 'SHA256 mismatch; launch cancelled' }; "
-    command += '& python -X utf8 $p }'
+    powershell = (HERE / 'run.ps1.in').read_text(encoding='utf-8')
+    powershell = powershell.replace('@PACKAGE_URL@', url).replace('@PACKAGE_SHA256@', digest)
+    (output / 'run.ps1').write_text(powershell, encoding='utf-8', newline='\n')
+    powershell_url = 'https://github.com/' + repository + '/releases/download/' + tag + '/run.ps1'
+    command = "& ([scriptblock]::Create((Invoke-WebRequest -UseBasicParsing -Uri '" + powershell_url + "').Content))"
     (output / 'run-windows.txt').write_text(command + '\n', encoding='utf-8')
     (output / 'vps-migration.pyz.sha256').write_text(digest + '  vps-migration.pyz\n', encoding='utf-8')
     release = {'repository': repository, 'tag': tag, 'sha256': digest, 'asset_url': url,
-               'launcher_url': launcher_url, 'release_assets': ['vps-migration.pyz', 'vps-migration.pyz.sha256', 'run.sh'],
+               'launcher_url': launcher_url, 'powershell_launcher_url': powershell_url,
+               'release_assets': ['vps-migration.pyz', 'vps-migration.pyz.sha256', 'run.sh', 'run.ps1'],
                'payload_files': FILES, 'archive_bytes': archive.stat().st_size,
                'publication_required': True}
     (output / 'release.json').write_text(json.dumps(release, indent=2) + '\n', encoding='utf-8')
@@ -53,7 +55,7 @@ def build(output, repository='shambeer/VpsSettings'):
 def main():
     parser = argparse.ArgumentParser(description='Сборка переносимого мигратора без Git и без приватных файлов')
     parser.add_argument('--output', type=Path, default=REPOSITORY / 'dist/migration')
-    parser.add_argument('--repository', default='shambeer/VpsSettings')
+    parser.add_argument('--repository', default='shambeer/VpsMigration')
     arguments = parser.parse_args()
     release = build(arguments.output, arguments.repository)
     print('Пакет и проверяемая команда: ' + str(arguments.output.resolve()))

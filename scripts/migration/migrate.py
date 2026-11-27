@@ -183,18 +183,28 @@ def main():
             raise ValueError('Неизвестный вариант копии')
     target = connection('Новый сервер: только чистая установка, Ubuntu/Debian, root и Python 3.11+')
     domain = c.validate_domain(ask('Домен нового сервера; заранее направьте A-запись на его IPv4'))
-    camouflage = c.validate_domain(ask('HTTPS-сайт для REALITY и Telegram-маскировки', 'www.googletagmanager.com'))
+    camouflage = c.validate_domain(ask('HTTPS-сайт для новых REALITY/Telegram-конфигов: TLS 1.3 и HTTP/2, не домен этого VPS', ''))
+    print('1 — Сеть с фильтрацией: снаружи только XRay TCP 443; панели и резервные протоколы локально')
+    print('2 — Все VPN-порты и HTTPS-панель 3DP опубликованы, как в обычной установке')
+    profile_choice = ask('Сетевой профиль', '1')
+    if profile_choice not in ['1', '2']:
+        raise ValueError('Неизвестный сетевой профиль')
+    network_profile = 'filtered' if profile_choice == '1' else 'all'
+    selected_fingerprint = ask('TLS fingerprint клиента REALITY: firefox или safari', 'firefox')
+    c.fingerprint({'fingerprint': selected_fingerprint})
     email = ask('Email для Let’s Encrypt, можно оставить пустым', '')
     if email and (not re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+', email) or email.startswith('-')):
         raise ValueError('Некорректный email')
     print('\nБудут установлены Docker, VPN, 3x-ui/3DP, Fail2ban, firewall и Certbot.')
     print('Протоколы: XRay, AmneziaWG, Telegram MTProxy, WireGuard, OpenVPN, Shadowsocks, Hysteria2.')
     print('Приватный SSH-ключ останется на этом компьютере. Парольный вход отключится после проверки ключа.')
+    print('Сетевой профиль: ' + network_profile + '. Маскировка не устраняет блокировку всего IP.')
     print('Подтверждение также означает согласие с условиями Let’s Encrypt: https://letsencrypt.org/repository/')
     if ask('Для запуска введите DEPLOY ' + target.address) != 'DEPLOY ' + target.address:
         raise RuntimeError('Развёртывание отменено')
     request = {'mode': 'fresh' if mode == '1' else 'restore', 'ip': target.address, 'domain': domain,
-               'camouflage': camouflage, 'email': email, 'acme_agreed': True, 'ssh_port': target.port}
+               'camouflage': camouflage, 'email': email, 'acme_agreed': True, 'ssh_port': target.port,
+               'network_profile': network_profile, 'fingerprint': selected_fingerprint}
     job = prepare(target, request, output)
     c.write(output / 'operation.json', {'remote_job': job, 'target_ip': target.address, 'mode': request['mode']})
     action(target, job, 'preflight')

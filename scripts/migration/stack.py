@@ -57,13 +57,15 @@ def network():
 
 
 def create(name, reference, command=None, ports=None, mounts=None, environment=None,
-           aliases=None, entrypoint=None, tunnel=False, readonly=False, working=None, healthcheck=None):
+           aliases=None, entrypoint=None, tunnel=False, readonly=False, working=None, healthcheck=None, request=None):
     if exists(name):
         raise RuntimeError('Контейнер уже существует: ' + name)
     network()
     bindings = {}
     for inside, outside in (ports or {}).items():
         bindings[inside] = [{'HostIp': address, 'HostPort': str(port)} for address, port in outside]
+    if bindings:
+        bindings = c.exposure_bindings(name, bindings, request or {})
     host = {'NetworkMode': NETWORK, 'PortBindings': bindings,
             'RestartPolicy': {'Name': 'unless-stopped'}, 'Mounts': mounts or [],
             'LogConfig': {'Type': 'local', 'Config': {'max-size': '10m', 'max-file': '3'}},
@@ -140,7 +142,7 @@ def wireguard(request, reference, awg=False):
     c.write(directory / (interface + '.conf'), server)
     script = ('awg-quick' if awg else 'wg-quick') + ' up /etc/vpn/' + interface + '.conf; exec tail -f /dev/null'
     create(name, reference, ['-ec', script], {str(port) + '/udp': published(port)},
-           [bind(directory, '/etc/vpn')], entrypoint=['/bin/bash'], tunnel=True)
+           [bind(directory, '/etc/vpn')], entrypoint=['/bin/bash'], tunnel=True, request=request)
 
 
 def xray(request):
@@ -156,13 +158,13 @@ def xray(request):
     path = configuration('xray', {'log': {'loglevel': 'warning'}, 'inbounds': [inbound],
                                   'outbounds': [{'protocol': 'freedom'}]})
     create('amnezia-xray', image('xray'), ['run', '-c', '/etc/vpn/server.json'],
-           {'443/tcp': published(443)}, [bind(path.parent, '/etc/vpn')])
+           {'443/tcp': published(443)}, [bind(path.parent, '/etc/vpn')], request=request)
     table = []
     for role, client in zip(ROLES, clients):
-        reality = {'serverName': camouflage, 'publicKey': public, 'shortId': short_id, 'fingerprint': 'firefox'}
+        reality = {'serverName': camouflage, 'publicKey': public, 'shortId': short_id, 'fingerprint': c.fingerprint(request)}
         c.export_access(role, 'xray', c.xray_client(client['id'], request['domain'], 443, reality),
-                        c.vless_link(client['id'], request['domain'], 443, reality, 'Shambeer-' + role))
-        table.append({'clientId': client['id'], 'userData': {'clientName': 'Shambeer-' + role}})
+                        c.vless_link(client['id'], request['domain'], 443, reality, 'VPN-' + role))
+        table.append({'clientId': client['id'], 'userData': {'clientName': 'VPN-' + role}})
     c.write(path.parent / 'clientsTable', table)
 
 
@@ -175,7 +177,7 @@ def telemt(request):
     create('amnezia-telemt', image('telemt'), ['/etc/telemt/server.toml'],
            {'50553/tcp': published(50553)}, [bind(path.parent, '/etc/telemt')], readonly=True, working='/run/telemt',
            healthcheck={'Test': ['CMD', '/app/telemt', 'healthcheck', '/etc/telemt/server.toml', '--mode', 'liveness'],
-                        'Interval': 30_000_000_000, 'Timeout': 5_000_000_000, 'StartPeriod': 20_000_000_000, 'Retries': 3})
+                        'Interval': 30_000_000_000, 'Timeout': 5_000_000_000, 'StartPeriod': 20_000_000_000, 'Retries': 3}, request=request)
     for role, value in secrets_by_role.items():
         secret = 'ee' + value + request['camouflage'].encode().hex()
         link = 'tg://proxy?' + urlencode({'server': request['domain'], 'port': 50553, 'secret': secret})
@@ -197,7 +199,7 @@ def shadowsocks(request):
         c.export_access(role, 'shadowsocks', {'server': request['domain'], 'server_port': port,
                          'method': method, 'password': secret, 'local_port': 1080}, link)
     path = configuration('shadowsocks', {'inbounds': inbounds, 'outbounds': [{'protocol': 'freedom'}]})
-    create('vpn-shadowsocks', image('xray'), ['run', '-c', '/etc/vpn/server.json'], ports, [bind(path.parent, '/etc/vpn')])
+    create('vpn-shadowsocks', image('xray'), ['run', '-c', '/etc/vpn/server.json'], ports, [bind(path.parent, '/etc/vpn')], request=request)
 
 
 def hysteria(request):
@@ -209,7 +211,7 @@ def hysteria(request):
               'obfs': {'type': 'salamander', 'salamander': {'password': obfuscation}}}
     path = configuration('hysteria', config)
     create('vpn-hysteria2', image('hysteria'), ['server', '-c', '/etc/vpn/server.json'],
-           {'2443/udp': published(2443)}, [bind(path.parent, '/etc/vpn'), bind('/etc/letsencrypt', '/etc/letsencrypt')])
+           {'2443/udp': published(2443)}, [bind(path.parent, '/etc/vpn'), bind('/etc/letsencrypt', '/etc/letsencrypt')], request=request)
     for role, secret in credentials.items():
         client = {'server': request['domain'] + ':2443', 'auth': role + ':' + secret,
                   'tls': {'sni': request['domain']}, 'obfs': config['obfs'],
@@ -223,7 +225,7 @@ def openvpn(request, reference):
     directory = c.ROOT / 'config/openvpn'
     directory.mkdir(parents=True)
     script = 'export EASYRSA_PKI=/etc/openvpn/pki EASYRSA_BATCH=1 EASYRSA_ALGO=ec EASYRSA_CURVE=prime256v1; '
-    script += '/usr/share/easy-rsa/easyrsa init-pki; EASYRSA_REQ_CN=Shambeer-CA /usr/share/easy-rsa/easyrsa build-ca nopass; '
+    script += '/usr/share/easy-rsa/easyrsa init-pki; EASYRSA_REQ_CN=VPN-CA /usr/share/easy-rsa/easyrsa build-ca nopass; '
     for name in ['server', *ROLES]:
         script += '/usr/share/easy-rsa/easyrsa build-' + ('server' if name == 'server' else 'client') + '-full ' + name + ' nopass; '
     script += 'openvpn --genkey secret /etc/openvpn/tls-crypt.key'
@@ -238,7 +240,7 @@ def openvpn(request, reference):
     start = 'iptables -A FORWARD -i tun0 -j ACCEPT; iptables -A FORWARD -o tun0 -j ACCEPT; '
     start += 'iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE; exec openvpn --config /etc/openvpn/server.conf'
     create('vpn-openvpn', reference, ['-ec', start], {'1194/udp': published(1194)},
-           [bind(directory, '/etc/openvpn')], entrypoint=['/bin/bash'], tunnel=True)
+           [bind(directory, '/etc/openvpn')], entrypoint=['/bin/bash'], tunnel=True, request=request)
     for role in ROLES:
         client = 'client\ndev tun\nproto udp\nremote ' + request['domain'] + ' 1194\nnobind\npersist-key\npersist-tun\nremote-cert-tls server\nverify-x509-name server name\ntls-version-min 1.2\nverb 3\n'
         for tag, path in [('ca', directory / 'pki/ca.crt'), ('cert', directory / ('pki/issued/' + role + '.crt')),
@@ -304,7 +306,9 @@ def panels(request):
     nginx += 'location /bus/ { proxy_pass http://backend:3100/bus/; proxy_http_version 1.1; proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection "upgrade"; } }\n'
     path = configuration('frontend', nginx, 'conf')
     create('3dp-frontend', image('frontend'), ports={'443/tcp': published(6659)}, mounts=[
-           bind(path, '/etc/nginx/conf.d/default.conf'), bind('/etc/letsencrypt', '/etc/letsencrypt')])
+           bind(path, '/etc/nginx/conf.d/default.conf'), bind('/etc/letsencrypt', '/etc/letsencrypt')], request=request)
+    administrator['network_profile'] = c.network_profile(request)
+    administrator['ssh_tunnel_required'] = c.network_profile(request) == 'filtered'
     c.write(c.ROOT / 'exports/admin/panels.json', administrator)
 
 

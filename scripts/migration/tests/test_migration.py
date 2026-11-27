@@ -38,6 +38,70 @@ class MigrationTests(unittest.TestCase):
         self.assertTrue(self.directory.is_relative_to((self.repository / 'private-vpn').resolve()))
         self.temporary.cleanup()
 
+    def test_filtered_bindings_are_private_without_mutating_source(self):
+        bindings = {'443/tcp': [{'HostIp': '0.0.0.0', 'HostPort': '443'}, {'HostIp': '::', 'HostPort': '443'}]}
+        self.assertEqual(c.exposure_bindings('amnezia-xray', bindings, {'network_profile': 'filtered'}),
+                         {'443/tcp': [{'HostIp': '0.0.0.0', 'HostPort': '443'}]})
+        self.assertEqual(c.exposure_bindings('other', bindings, {'network_profile': 'filtered'})['443/tcp'],
+                         [{'HostIp': '127.0.0.1', 'HostPort': '443'}])
+        self.assertEqual(len(bindings['443/tcp']), 2)
+        self.assertEqual(c.exposure_bindings('other', bindings, {}), bindings)
+        with self.assertRaises(ValueError):
+            c.exposure_bindings('amnezia-xray', {}, {'network_profile': 'filtered'})
+
+    def test_selected_fingerprint_reaches_both_exports(self):
+        reality = {'publicKey': 'key', 'shortId': 'abcd', 'serverName': 'mask.example.org', 'fingerprint': 'safari'}
+        self.assertEqual(parse_qs(urlsplit(c.vless_link('id', 'vpn.example.org', 443, reality, 'test')).query)['fp'], ['safari'])
+        self.assertEqual(c.xray_client('id', 'vpn.example.org', 443, reality)['outbounds'][0]['streamSettings']['realitySettings']['fingerprint'], 'safari')
+        with self.assertRaises(ValueError):
+            c.fingerprint({'fingerprint': 'random'})
+
+    def test_camouflage_requires_verified_tls13_h2(self):
+        request = {'domain': 'vpn.example.org', 'ip': '8.8.8.8', 'camouflage': 'mask.example.org'}
+        with patch.object(remote.socket, 'getaddrinfo', return_value=[(None, None, None, None, ('1.1.1.1', 443))]), patch.object(c, 'JOB', None):
+            for output, accepted in [(b'TLSv1.3 ALPN protocol: h2\n', True), (b'TLSv1.3 ALPN protocol: http/1.1\n', False), (b'TLSv1.2 ALPN protocol: h2\n', False)]:
+                with patch.object(c, 'run', return_value=SimpleNamespace(returncode=0, stdout=output, stderr=b'')) as run:
+                    if accepted:
+                        remote.check_camouflage(request)
+                        self.assertIn('-verify_return_error', run.call_args.args[0])
+                        self.assertIn('-4', run.call_args.args[0])
+                    else:
+                        with self.assertRaises(RuntimeError):
+                            remote.check_camouflage(request)
+        with self.assertRaises(RuntimeError):
+            remote.check_camouflage(request, domain=request['domain'])
+
+    def test_filtered_firewall_exposes_only_main_vpn_ssh_and_acme(self):
+        with patch.object(c, 'write'), patch.object(c, 'run') as run, patch.dict(remote.os.environ, {'SSH_CONNECTION': ''}):
+            remote.firewall({'network_profile': 'filtered', 'ssh_port': 2222})
+        allowed = [call.args[0][2] for call in run.call_args_list if call.args[0][:2] == ['ufw', 'allow']]
+        self.assertEqual(allowed, ['2222/tcp', '80/tcp', '443/tcp'])
+
+    def test_private_panel_route_preserves_basepath_and_external_nodes(self):
+        manifest = {'source_ip': '1.1.1.1', 'source_domain': 'old.example.org', 'containers': [
+            {'Name': '/3x-ui', 'HostConfig': {'PortBindings': {'2053/tcp': [{'HostPort': '2053'}]}}}]}
+        request = {'ip': '8.8.8.8', 'domain': 'vpn.example.org', 'network_profile': 'filtered'}
+        self.assertEqual(remote.private_panel_url('http://old.example.org:2053/base/?x=1', manifest, request), 'http://3x-ui:2053/base/?x=1')
+        outside = 'https://external.example.org:2053/base/'
+        self.assertEqual(remote.private_panel_url(outside, manifest, request), outside)
+        with self.assertRaises(RuntimeError):
+            remote.private_panel_url('https://old.example.org:2053/base/', manifest, request)
+
+    def test_filtered_restore_rejects_host_network_before_creation(self):
+        manifest = {'containers': [{'Name': '/vpn', 'Config': {}, 'HostConfig': {'NetworkMode': 'host'}}], 'snapshot_images': {'vpn': 'snapshot'}}
+        with patch.object(c, 'api') as api:
+            with self.assertRaises(RuntimeError):
+                snapshot.restore_containers(manifest, {'network_profile': 'filtered'})
+        api.assert_not_called()
+
+    def test_local_panel_connection_keeps_certificate_hostname(self):
+        connection = remote.LocalPanelConnection('vpn.example.org')
+        with patch.object(remote.socket, 'create_connection') as connect, patch.object(connection.tls_context, 'wrap_socket') as wrap:
+            connection.connect()
+            connect.assert_called_once_with(('127.0.0.1', 6659), 20)
+            wrap.assert_called_once_with(connect.return_value, server_hostname='vpn.example.org')
+        self.assertTrue(connection.tls_context.check_hostname)
+
     def test_reject_shell_and_private_endpoints(self):
         for value in ['127.0.0.1', '10.1.2.3', '8.8.8.8; touch /tmp/x', '-oProxyCommand=evil']:
             with self.assertRaises(ValueError):
@@ -228,6 +292,13 @@ class MigrationTests(unittest.TestCase):
         self.assertIn(first['sha256'], launcher)
         self.assertIn(first['asset_url'], launcher)
         self.assertNotIn('@PACKAGE_', launcher)
+        powershell = (self.directory / 'first/run.ps1').read_text()
+        self.assertIn(first['sha256'], powershell)
+        self.assertIn(first['asset_url'], powershell)
+        self.assertNotIn('@PACKAGE_', powershell)
+        self.assertIn('finally', powershell)
+        self.assertIn('Remove-Item -LiteralPath $packagePath', powershell)
+        self.assertEqual(first['release_assets'], ['vps-migration.pyz', 'vps-migration.pyz.sha256', 'run.sh', 'run.ps1'])
 
     def test_portable_install_preserves_state_and_refuses_changed_code(self):
         build_portable.build(self.directory / 'package')
