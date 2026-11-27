@@ -40,7 +40,7 @@ def build(output, repository='shambeer/VpsMigration'):
     powershell = powershell.replace('@PACKAGE_URL@', url).replace('@PACKAGE_SHA256@', digest)
     (output / 'run.ps1').write_text(powershell, encoding='utf-8', newline='\n')
     powershell_url = 'https://github.com/' + repository + '/releases/download/' + tag + '/run.ps1'
-    command = "& ([scriptblock]::Create((Invoke-WebRequest -UseBasicParsing -Uri '" + powershell_url + "').Content))"
+    command = "& ([scriptblock]::Create((New-Object Net.WebClient).DownloadString('" + powershell_url + "')))"
     (output / 'run-windows.txt').write_text(command + '\n', encoding='utf-8')
     (output / 'vps-migration.pyz.sha256').write_text(digest + '  vps-migration.pyz\n', encoding='utf-8')
     release = {'repository': repository, 'tag': tag, 'sha256': digest, 'asset_url': url,

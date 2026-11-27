@@ -33,7 +33,7 @@ curl -fsSL https://github.com/shambeer/VpsMigration/releases/latest/download/run
 Windows PowerShell 5.1+:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-WebRequest -UseBasicParsing -Uri 'https://github.com/shambeer/VpsMigration/releases/latest/download/run.ps1').Content))
+& ([scriptblock]::Create((New-Object Net.WebClient).DownloadString('https://github.com/shambeer/VpsMigration/releases/latest/download/run.ps1')))
 ```
 
 Для проверки без SSH добавьте `--check` в конец PowerShell-команды; для Bash используйте `| bash -s -- --check`. Команды запускаются на компьютере с вашим SSH-ключом. Нужны Python 3.11+ и OpenSSH; в Linux также curl и Bash. В PowerShell Bash/WSL не требуется. Для старого PowerShell при ошибке TLS предварительно выполните `[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12`.

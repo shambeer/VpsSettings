@@ -13,7 +13,7 @@
 ### 1. Windows PowerShell
 
 ```powershell
-& ([scriptblock]::Create((Invoke-WebRequest -UseBasicParsing -Uri 'https://github.com/shambeer/VpsMigration/releases/latest/download/run.ps1').Content))
+& ([scriptblock]::Create((New-Object Net.WebClient).DownloadString('https://github.com/shambeer/VpsMigration/releases/latest/download/run.ps1')))
 ```
 
 Для проверки скачивания и синтаксиса без подключения к серверу добавьте `--check` в конец команды. Приватный SSH-ключ указывается локальным путём в меню; содержимое ключа никуда не вставляйте.

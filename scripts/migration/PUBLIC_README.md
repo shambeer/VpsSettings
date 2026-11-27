@@ -7,7 +7,7 @@
 Windows PowerShell 5.1+:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-WebRequest -UseBasicParsing -Uri 'https://github.com/shambeer/VpsMigration/releases/latest/download/run.ps1').Content))
+& ([scriptblock]::Create((New-Object Net.WebClient).DownloadString('https://github.com/shambeer/VpsMigration/releases/latest/download/run.ps1')))
 ```
 
 Linux/WSL:
