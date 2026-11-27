@@ -1,4 +1,5 @@
 {
+  "sub_store": true,
   "warp": true,
   "reality": true,
   "subscriptions": true,

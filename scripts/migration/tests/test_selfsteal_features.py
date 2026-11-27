@@ -13,11 +13,68 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from vps_migration.core import common as c
 from vps_migration.core.selfsteal_options import validate
 from vps_migration.server import selfsteal, relay
-from vps_migration.server.selfsteal_features import install, profiles, subscriptions, warp, certificates
+from vps_migration.server.selfsteal_features import install, profiles, subscriptions, substore, warp, certificates
 from vps_migration.cli.selfsteal import site_archive, choose_warp
 
 
 class FullSelfStealTests(unittest.TestCase):
+    def test_substore_delivery_has_all_client_files_and_no_admin_or_other_role(self):
+        import io
+        import zipfile
+        token = 'a' * 64
+        with patch.object(c, 'ROOT', self.root):
+            c.write(self.root / 'exports/admin/panels.json', {'password': 'ADMIN-DO-NOT-PUBLISH'})
+            c.write(self.root / 'exports/shared/configurations/wireguard.conf', 'OTHER-ROLE')
+            originals = {'configurations/amneziawg.conf': 'AWG-S1=12',
+                         'configurations/openvpn.ovpn': 'OPENVPN-PRIVATE',
+                         'configurations/custom-format.xyz': '<script>TEST</script>',
+                         'strings/telegram.txt': 'tg://proxy?secret=TEST',
+                         'strings/xray.txt': 'vless://TEST@entry.example.org:443#Amnezia',
+                         'subscriptions/base64.txt': 'TEST-BASE64'}
+            for name, value in originals.items():
+                c.write(self.root / 'exports/personal' / name, value)
+            locations = substore.portal(self.request, 'personal', token)
+            delivery = self.root / 'exports/personal/delivery'
+            manifest = json.loads((delivery / 'manifest.json').read_text())
+            self.assertEqual({item['file'] for item in manifest['files']}, set(originals))
+            with zipfile.ZipFile(io.BytesIO((delivery / 'all.zip').read_bytes())) as archive:
+                self.assertEqual(set(archive.namelist()), {*originals, 'manifest.json'})
+                for name, value in originals.items():
+                    self.assertEqual(archive.read(name).decode(), value)
+            page = (delivery / 'index.html').read_text()
+            self.assertNotIn('ADMIN-DO-NOT-PUBLISH', page)
+            self.assertNotIn('OTHER-ROLE', page)
+            self.assertNotIn('<script>', page)
+            self.assertIn('no-store', locations)
+            self.assertIn('access_log off', locations)
+            self.assertNotIn('/api/', locations)
+            with self.assertRaises(ValueError):
+                substore.portal(self.request, 'admin', token)
+            with self.assertRaises(ValueError):
+                substore.portal(self.request, 'personal', '../bad')
+
+    def test_substore_proxy_has_fixed_backend_and_original_xray_in_subscription(self):
+        with patch.object(c, 'ROOT', self.root):
+            config = install.enhance(selfsteal.configuration(self.request, self.clients, '/route/'),
+                                      self.state, validate(), warp.outbound(self.registration()))
+            profiles.export(self.request, config, self.state)
+            original = 'vless://legacy@entry.example.org:443?type=tcp&security=reality#Amnezia-XRay'
+            for role in ['personal', 'shared']:
+                c.export_access(role, 'xray', link=original)
+            subscriptions.export(self.request, self.state, validate())
+            self.state['sub_store_port'] = 43000
+            with patch.object(substore, 'install'), patch.object(substore, 'api', return_value=b'{}'), \
+                 patch.object(substore, 'upload') as upload:
+                locations = substore.configure(self.request, self.state)
+            self.assertEqual(upload.call_count, 2)
+            for call in upload.call_args_list:
+                links = base64.b64decode(call.args[1]).decode().splitlines()
+                self.assertIn(original, links)
+                self.assertEqual(len(links), 7)
+            self.assertIn('proxy_pass http://vpn-sub-store:3000/api/file/vps-personal?;', locations)
+            self.assertNotIn('$args', locations)
+            self.assertNotIn('$request_uri', locations)
+
     def setUp(self):
         parent = Path(__file__).resolve().parents[3] / 'private-vpn/server-settings/tools/test-runtime'
         parent.mkdir(parents=True, exist_ok=True)

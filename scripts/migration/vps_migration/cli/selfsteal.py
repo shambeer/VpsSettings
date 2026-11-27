@@ -62,11 +62,20 @@ def site_archive(output, settings):
 def export_tunnel(host, output, base_path):
     import os
     import shlex
-    arguments = ['ssh', *host.options, '-N', '-L', '127.0.0.1:2053:127.0.0.1:2053',
+    extra = []
+    manager = output / 'access/admin/sub-store.json'
+    if manager.exists():
+        port = json.loads(manager.read_text())['local_port']
+        if not isinstance(port, int) or not 43000 <= port < 43100:
+            raise ValueError('Недопустимый локальный порт Sub-Store')
+        extra = ['-L', '127.0.0.1:' + str(port) + ':127.0.0.1:' + str(port)]
+    arguments = ['ssh', *host.options, '-N', '-L', '127.0.0.1:2053:127.0.0.1:2053', *extra,
                  '-p', str(host.port), 'root@' + host.address]
     if os.name == 'nt':
         command = '& ' + ' '.join("'" + value.replace("'", "''") + "'" for value in arguments)
     else:
         command = shlex.join(arguments)
     text = command + '\n\nПанель после запуска туннеля: http://127.0.0.1:2053' + base_path + '\n'
+    if manager.exists():
+        text += 'Sub-Store: http://127.0.0.1:' + str(port) + '\n'
     c.write(output / 'access/admin/ssh-tunnel.txt', text)

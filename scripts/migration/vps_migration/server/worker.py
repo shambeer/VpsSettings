@@ -723,6 +723,8 @@ def verify_and_export(request, job):
     time.sleep(5)
     checks = {}
     for name in c.CONTAINERS:
+        if name == 'vpn-sub-store' and not request.get('selfsteal_options', {}).get('sub_store') and not stack.exists(name):
+            continue
         if name == 'vpn-hysteria2' and request.get('self_steal') and not stack.exists(name):
             continue
         if name in selfsteal.NAMES and not request.get('self_steal'):

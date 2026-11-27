@@ -19,16 +19,18 @@ def validate(value=None):
     value = copy.deepcopy({} if value is None else value)
     if not isinstance(value, dict):
         raise ValueError('Настройки Self-Steal должны быть JSON-объектом')
-    allowed = {'warp', 'reality', 'subscriptions', 'xhttp', 'warp_path', 'site_directory',
+    allowed = {'sub_store', 'warp', 'reality', 'subscriptions', 'xhttp', 'warp_path', 'site_directory',
                'additional_domains', 'direct_domains', 'direct_networks', 'guide_whitelist', 'tls_port', 'reality_port'}
     if set(value) - allowed:
         raise ValueError('Неизвестная настройка Self-Steal')
-    result = {'warp': True, 'reality': True, 'subscriptions': True, 'guide_whitelist': False,
+    result = {'sub_store': False, 'warp': True, 'reality': True, 'subscriptions': True, 'guide_whitelist': False,
               'additional_domains': [], 'direct_domains': [], 'direct_networks': []}
     result.update(value)
-    for key in ['warp', 'reality', 'subscriptions', 'guide_whitelist']:
+    for key in ['sub_store', 'warp', 'reality', 'subscriptions', 'guide_whitelist']:
         if not isinstance(result[key], bool):
             raise ValueError('Настройка ' + key + ' должна быть true/false')
+    if result['sub_store'] and not result['subscriptions']:
+        raise ValueError('Sub-Store требует включённых subscriptions')
     xhttp = value.get('xhttp', {})
     if not isinstance(xhttp, dict) or set(xhttp) - (set(DEFAULT_XHTTP) | {'path', 'sessionIDTable'}):
         raise ValueError('Неизвестный параметр XHTTP')

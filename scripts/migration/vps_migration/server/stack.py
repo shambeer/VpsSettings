@@ -11,6 +11,7 @@ import uuid
 from vps_migration.core import common as c
 
 IMAGES = {
+    'substore-node': 'node:24.22.1-bookworm-slim',
     'xray': 'ghcr.io/xtls/xray-core:latest',
     'awg': 'amneziavpn/amneziawg-go:latest',
     'telemt': 'ghcr.io/telemt/telemt:latest',

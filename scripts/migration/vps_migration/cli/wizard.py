@@ -382,7 +382,7 @@ def execute_wizard(args):
     scheme.update(topology.bundle_settings(bundle, scheme))
     scheme['selfsteal_options'] = dict(session.ACTIVE.state['selfsteal_options']) if session.ACTIVE else {}
     if all_inclusive:
-        scheme['selfsteal_options'].update({'reality': True, 'subscriptions': True})
+        scheme['selfsteal_options'].update({'reality': True, 'subscriptions': True, 'sub_store': True})
     for option, setting in [('tls_port', 'selfsteal_port'), ('reality_port', 'selfsteal_reality_port')]:
         if option in scheme['selfsteal_options']:
             port = scheme['selfsteal_options'][option]
@@ -417,6 +417,8 @@ def execute_wizard(args):
     ui.section('Проверка плана перед изменениями')
     if all_inclusive:
         print('Набор: Всё включено. При восстановлении основные приложения и панели берутся из копии.')
+    if scheme['selfsteal_options'].get('sub_store'):
+        print('Sub-Store: готовые подписки без преобразования, HTTPS-страница всех клиентских файлов; управление только через SSH-туннель.')
     print('Будут установлены Docker, VPN, 3x-ui/3DP, Fail2ban, firewall и Certbot.')
     print('Протоколы: XRay, AmneziaWG, Telegram MTProxy, WireGuard, OpenVPN, Shadowsocks, Hysteria2.')
     print('Приватный SSH-ключ останется на этом компьютере. Парольный вход отключится после проверки ключа.')

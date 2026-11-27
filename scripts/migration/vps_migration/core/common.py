@@ -16,7 +16,7 @@ from urllib.parse import urlencode, quote
 CONTAINERS = ['amnezia-awg2', 'amnezia-xray', 'amnezia-telemt', '3x-ui',
               '3dp-postgres', '3dp-backend', '3dp-frontend', 'vpn-wireguard',
               'vpn-openvpn', 'vpn-shadowsocks', 'vpn-hysteria2', 'vpn-edge',
-              'vpn-selfsteal-xray', 'vpn-selfsteal-site', 'vpn-selfsteal-hysteria2']
+              'vpn-selfsteal-xray', 'vpn-selfsteal-site', 'vpn-selfsteal-hysteria2', 'vpn-sub-store']
 ROOT = Path('/opt/vps-stack')
 JOB = None
 

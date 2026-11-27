@@ -11,7 +11,7 @@ SERVER_FILES = ['remote.py', 'vps_migration/__init__.py',
                 'vps_migration/server/__init__.py', *['vps_migration/server/' + name for name in [
                     'worker.py', 'execution.py', 'stack.py', 'snapshot.py', 'relay.py', 'selfsteal.py']],
                 *['vps_migration/server/maintenance/' + name for name in ['__init__.py', 'apt.py', 'cleanup.py', 'operations.py']],
-                *['vps_migration/server/selfsteal_features/' + name for name in ['__init__.py', 'install.py', 'profiles.py', 'subscriptions.py', 'warp.py', 'certificates.py']]]
+                *['vps_migration/server/selfsteal_features/' + name for name in ['__init__.py', 'install.py', 'profiles.py', 'subscriptions.py', 'substore.py', 'warp.py', 'certificates.py']]]
 LOCAL_FILES = ['migrate.py', 'vps_migration/cli/__init__.py', 'vps_migration/cli/wizard.py',
                'vps_migration/cli/console.py', 'vps_migration/cli/session.py', 'vps_migration/cli/selfsteal.py', 'vps_migration/cli/topology.py', 'vps_migration/cli/maintenance.py',
                'vps_migration/packaging/__init__.py', 'vps_migration/packaging/portable.py']

@@ -161,6 +161,10 @@ def install(request):
     c.write(state_path, state)
     path = next(item for item in config['inbounds'] if item['tag'] == 'selfsteal-xhttp')['streamSettings']['xhttpSettings']['path']
     content(request)
+    if options['sub_store']:
+        from vps_migration.server.selfsteal_features import substore
+        locations = substore.configure(request, state)
+        c.write(state_path, state)
     try:
         bound_write(original_site, site_configuration(request, path, locations))
         c.run(['docker', 'exec', 'vpn-selfsteal-site', 'nginx', '-t'])
