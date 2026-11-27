@@ -484,8 +484,16 @@ def export_existing_telemt(request):
 
 
 def security_prepare(request, job):
-    if not (job / 'deploy-result.json').exists() or not json.loads((job / 'deploy-result.json').read_text()).get('success'):
-        raise RuntimeError('SSH защищается только после успешного развёртывания и проверок')
+    results = {'fresh': 'deploy-result.json', 'restore': 'deploy-result.json', 'relay': 'relay-result.json'}
+    filename = results.get(request.get('mode'))
+    if filename is None:
+        raise RuntimeError('Защита SSH не поддерживается для этого режима операции')
+    try:
+        result = json.loads((job / filename).read_text())
+    except (OSError, ValueError) as error:
+        raise RuntimeError('Для защиты SSH нужен корректный результат операции: ' + filename) from error
+    if not isinstance(result, dict) or result.get('success') is not True:
+        raise RuntimeError('SSH защищается только после успешной операции: ' + filename)
     connection = os.environ.get('SSH_CONNECTION', '').split()
     if not connection:
         raise RuntimeError('SSH_CONNECTION отсутствует; защита SSH должна запускаться через проверенный SSH')
