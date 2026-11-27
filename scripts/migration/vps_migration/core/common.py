@@ -58,6 +58,22 @@ def selfsteal_port(request):
     return port
 
 
+def selfsteal_reality_port(request):
+    port = request.get('selfsteal_reality_port', selfsteal_port(request) + 1)
+    if not isinstance(port, int) or isinstance(port, bool) or not 1024 <= port <= 65535 or port == selfsteal_port(request):
+        raise ValueError('Нужен отдельный порт Self-Steal REALITY')
+    return port
+
+
+def selfsteal_tcp_ports(request):
+    if not request.get('self_steal'):
+        return []
+    ports = [selfsteal_port(request)]
+    if request.get('full_selfsteal') and request.get('selfsteal_options', {}).get('reality', True):
+        ports.append(selfsteal_reality_port(request))
+    return ports
+
+
 def exposure_bindings(name, bindings, request):
     if request.get('relay_ip'):
         bindings = copy.deepcopy(bindings)
@@ -73,9 +89,14 @@ def exposure_bindings(name, bindings, request):
                                 for port in sorted({str(value['HostPort']) for value in bindings['2053/tcp'] or []})]
     if request.get('self_steal') and name in ['vpn-edge', 'vpn-selfsteal-hysteria2']:
         bindings = copy.deepcopy(bindings)
-        for values in bindings.values():
+        for inside, values in bindings.items():
             for value in values or []:
-                value['HostPort'] = str(selfsteal_port(request))
+                value['HostPort'] = str(selfsteal_reality_port(request) if inside == '444/tcp' else selfsteal_port(request))
+        if name == 'vpn-edge' and len(selfsteal_tcp_ports(request)) == 2:
+            bindings['444/tcp'] = [{'HostIp': '0.0.0.0', 'HostPort': str(selfsteal_reality_port(request))}]
+    if request.get('full_selfsteal') and name == 'vpn-selfsteal-site':
+        bindings = copy.deepcopy(bindings)
+        bindings['80/tcp'] = [{'HostIp': '0.0.0.0', 'HostPort': '80'}]
     if request.get('restore_shared_edge') and name == 'amnezia-xray':
         bindings = copy.deepcopy(bindings)
         for inside, values in bindings.items():
@@ -93,7 +114,9 @@ def exposure_bindings(name, bindings, request):
             address = '127.0.0.1'
             if name == 'amnezia-xray' and port == '443/tcp' and str(value['HostPort']) == '443':
                 address = '0.0.0.0'
-            if name in ['vpn-edge', 'vpn-selfsteal-hysteria2'] and port in ['443/tcp', '443/udp']:
+            if name == 'vpn-selfsteal-site' and request.get('full_selfsteal') and port == '80/tcp':
+                address = '0.0.0.0'
+            if name in ['vpn-edge', 'vpn-selfsteal-hysteria2'] and port in ['443/tcp', '444/tcp', '443/udp']:
                 address = '0.0.0.0'
             key = (address, str(value['HostPort']))
             if key not in seen:

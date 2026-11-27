@@ -59,13 +59,16 @@ def site_configuration(path):
             'location / { try_files $uri $uri/ =404; } }\n')
 
 
-def edge_configuration(domain):
+def edge_configuration(domain, request=None):
     c.validate_domain(domain)
+    extra = ''
+    if request and len(c.selfsteal_tcp_ports(request)) == 2:
+        extra = 'frontend reality_entry\n  bind :444\n  default_backend reality\nbackend reality\n  server reality vpn-selfsteal-xray:444\n'
     return ('global\n  log stdout format raw local0\n'
             'defaults\n  mode tcp\n  timeout connect 10s\n  timeout client 1h\n  timeout server 1h\n'
             'frontend tls_entry\n  bind :443\n'
             '  default_backend selfsteal\n'
-            'backend selfsteal\n  server selfsteal vpn-selfsteal-xray:443\n')
+            'backend selfsteal\n  server selfsteal vpn-selfsteal-xray:443\n' + extra)
 
 
 def export_access(request):
@@ -94,22 +97,40 @@ def install(request):
         if set(present) != set(NAMES):
             raise RuntimeError('Восстановлена неполная схема Self-Steal; автоматическая перезапись запрещена')
         export_access(request)
+        if request.get('full_selfsteal'):
+            from vps_migration.server.selfsteal_features.install import install as extend
+            extend(request)
         return
     stack.network()
     clients = [{'id': str(uuid.uuid4()), 'email': role + '@local'} for role in stack.ROLES]
     path = '/' + secrets.token_hex(16) + '/'
     xray = stack.configuration('selfsteal-xray', configuration(request, clients, path))
-    site = stack.configuration('selfsteal-site', site_configuration(path), 'conf')
+    if request.get('full_selfsteal'):
+        from vps_migration.server.selfsteal_features.install import site_configuration as full_site
+        site_text = full_site(request, path)
+    else:
+        site_text = site_configuration(path)
+    site = stack.configuration('selfsteal-site', site_text, 'conf')
     c.write(site.parent / 'index.html', '<!doctype html><html lang="en"><meta charset="utf-8"><title>Welcome</title>'
             '<style>body{font:18px system-ui;max-width:52rem;margin:12vh auto;padding:2rem;color:#203040}</style>'
             '<h1>Welcome</h1><p>This website is online.</p></html>\n')
     (site.parent / 'index.html').chmod(0o644)
     stack.create('vpn-selfsteal-xray', stack.image('xray'), ['run', '-c', '/etc/vpn/server.json'],
                  mounts=[stack.bind(xray.parent, '/etc/vpn'), stack.bind('/etc/letsencrypt', '/etc/letsencrypt')])
-    stack.create('vpn-selfsteal-site', stack.image('nginx'), mounts=[
-        stack.bind(site, '/etc/nginx/conf.d/default.conf'), stack.bind(site.parent / 'index.html', '/usr/share/nginx/html/index.html')])
-    edge = stack.configuration('selfsteal-edge', edge_configuration(request['domain']), 'cfg')
-    stack.create('vpn-edge', stack.image('haproxy'), ports={'443/tcp': stack.published(c.selfsteal_port(request))},
+    if request.get('full_selfsteal'):
+        from vps_migration.server.selfsteal_features.install import content
+        content({})
+        from vps_migration.server.selfsteal_features.certificates import webroot
+        mounts = [stack.bind(site.parent / 'content', '/usr/share/nginx/html'), stack.bind('/etc/letsencrypt', '/etc/letsencrypt'),
+                  stack.bind(webroot(request), '/var/lib/vps-acme')]
+    else:
+        mounts = [stack.bind(site.parent / 'index.html', '/usr/share/nginx/html/index.html')]
+    stack.create('vpn-selfsteal-site', stack.image('nginx'), ports={'80/tcp': stack.published(80)} if request.get('full_selfsteal') else None, mounts=[stack.bind(site, '/etc/nginx/conf.d/default.conf'), *mounts])
+    edge = stack.configuration('selfsteal-edge', edge_configuration(request['domain'], request), 'cfg')
+    ports = {'443/tcp': stack.published(c.selfsteal_port(request))}
+    if len(c.selfsteal_tcp_ports(request)) == 2:
+        ports['444/tcp'] = stack.published(c.selfsteal_reality_port(request))
+    stack.create('vpn-edge', stack.image('haproxy'), ports=ports,
                  mounts=[stack.bind(edge, '/usr/local/etc/haproxy/haproxy.cfg')], request=request)
     certificate = '/etc/letsencrypt/live/' + request['domain']
     hy = {'listen': ':443', 'tls': {'cert': certificate + '/fullchain.pem', 'key': certificate + '/privkey.pem'},
@@ -121,3 +142,6 @@ def install(request):
                  {'443/udp': stack.published(c.selfsteal_port(request))}, [stack.bind(hysteria.parent, '/etc/vpn'),
                  stack.bind('/etc/letsencrypt', '/etc/letsencrypt')], request=request)
     export_access(request)
+    if request.get('full_selfsteal'):
+        from vps_migration.server.selfsteal_features.install import install as extend
+        extend(request)

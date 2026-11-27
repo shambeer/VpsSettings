@@ -265,7 +265,7 @@ def restore_containers(manifest, request):
         host.pop('ConsoleSize', None)
         if c.network_profile(request) == 'filtered' and (host['NetworkMode'] == 'host' or host['NetworkMode'].startswith('container:')):
             raise RuntimeError('Нельзя закрыть порты host-network контейнера профилем filtered: ' + name)
-        if host.get('PortBindings') or name == 'amnezia-xray':
+        if host.get('PortBindings') or name == 'amnezia-xray' or (name == 'vpn-selfsteal-site' and request.get('full_selfsteal')):
             host['PortBindings'] = c.exposure_bindings(name, host.get('PortBindings') or {}, request)
         if c.network_profile(request) == 'filtered':
             host['PublishAllPorts'] = False
@@ -288,6 +288,19 @@ def restore_containers(manifest, request):
             if item['Type'] not in ['bind', 'volume']:
                 raise RuntimeError('Неподдерживаемый тип mount')
             host['Mounts'].append(item)
+        if name == 'vpn-selfsteal-site' and request.get('full_selfsteal'):
+            site = c.ROOT / 'config/selfsteal-site'
+            content = site / 'content'
+            content.mkdir(exist_ok=True)
+            if not (content / 'index.html').exists():
+                shutil.copy2(site / 'index.html', content / 'index.html')
+            content.chmod(0o755)
+            host['Mounts'] = [item for item in host['Mounts'] if item['Target'] not in ['/usr/share/nginx/html/index.html', '/usr/share/nginx/html', '/etc/letsencrypt']]
+            from vps_migration.server.selfsteal_features.certificates import webroot
+            host['Mounts'] = [item for item in host['Mounts'] if item['Target'] != '/var/lib/vps-acme']
+            host['Mounts'].append({'Type': 'bind', 'Source': str(webroot(request)), 'Target': '/var/lib/vps-acme', 'ReadOnly': True})
+            host['Mounts'].extend([{'Type': 'bind', 'Source': str(content), 'Target': '/usr/share/nginx/html', 'ReadOnly': True},
+                {'Type': 'bind', 'Source': '/etc/letsencrypt', 'Target': '/etc/letsencrypt', 'ReadOnly': True}])
         networks = original['NetworkSettings']['Networks']
         primary = host['NetworkMode']
         if primary == 'default':
@@ -296,6 +309,7 @@ def restore_containers(manifest, request):
             primary = next(iter(networks))
             host['NetworkMode'] = primary
         payload = {**config, 'HostConfig': host}
+        payload['ExposedPorts'] = {**config.get('ExposedPorts', {}), **{key: {} for key in host.get('PortBindings', {})}}
         environment = []
         for item in config.get('Env', []):
             key, separator, value = item.partition('=')

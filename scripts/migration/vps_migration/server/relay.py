@@ -19,14 +19,15 @@ UDP_PORTS = [443, 46872, 51820, 1194, 2443, 8388, 8389]
 
 def selected_ports(request):
     additional = [c.selfsteal_port(request)] if request.get('self_steal') else []
+    tcp_additional = c.selfsteal_tcp_ports(request)
     if c.network_profile(request) == 'filtered':
-        return [('tcp', sorted(set([80, 443] + additional))), ('udp', additional)]
+        return [('tcp', sorted(set([80, 443] + tcp_additional))), ('udp', additional)]
     result = []
     for protocol, defaults in [('tcp', TCP_PORTS), ('udp', UDP_PORTS)]:
         extras = request.get('extra_' + protocol + '_ports', [])
         if any(not isinstance(port, int) or isinstance(port, bool) or not 1 <= port <= 65535 for port in extras):
             raise ValueError('Недопустимый дополнительный порт')
-        result.append((protocol, sorted(set(defaults + extras + additional))))
+        result.append((protocol, sorted(set(defaults + extras + (tcp_additional if protocol == 'tcp' else additional)))))
     return result
 
 

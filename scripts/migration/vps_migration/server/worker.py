@@ -49,6 +49,8 @@ def preflight(request, target=True):
     if sys.version_info < (3, 11) or not hasattr(__import__('tarfile'), 'data_filter'):
         raise RuntimeError('Нужен Python 3.11+ с актуальными исправлениями безопасности tarfile')
     if target:
+        if request.get('full_selfsteal') and 80 in request.get('reserved_binding_ports', []) and not request.get('has_selfsteal_http'):
+            raise RuntimeError('HTTP 80 занят сохранённым приложением; webroot не будет вытеснять Amnezia или действующие сервисы')
         if request.get('relay_ip'):
             relay.assert_local_public_ip(request['ip'])
         if c.run(['sh', '-c', 'command -v docker'], check=False).returncode == 0:
@@ -68,12 +70,24 @@ def preflight(request, target=True):
             ipv6 = []
         if ipv6:
             raise RuntimeError('Этот сценарий настраивает IPv4: удалите AAAA домена до установки')
+        from vps_migration.core.selfsteal_options import validate
+        for domain in validate(request.get('selfsteal_options'))['additional_domains']:
+            expected = {request.get('relay_ip') or request['ip']}
+            found = {item[4][0] for item in socket.getaddrinfo(domain, None, socket.AF_INET)}
+            if found != expected:
+                raise RuntimeError('A-записи дополнительного домена должны указывать на публичный вход')
+            try:
+                ipv6 = socket.getaddrinfo(domain, None, socket.AF_INET6)
+            except socket.gaierror:
+                ipv6 = []
+            if ipv6:
+                raise RuntimeError('Удалите AAAA дополнительного домена до установки')
         if not Path('/dev/net/tun').exists():
             c.run(['modprobe', 'tun'])
         if not Path('/dev/net/tun').exists():
             raise RuntimeError('/dev/net/tun недоступен; проверьте настройки VPS у провайдера')
         listening = c.run(['ss', '-H', '-lntu']).stdout.decode()
-        reserved = {80, 443, c.selfsteal_port(request), 1194, 2053, 2443, 6659, 8388, 8389, 46872, 50553, 51820}
+        reserved = set(c.selfsteal_tcp_ports(request)) | {80, 443, c.selfsteal_port(request), 1194, 2053, 2443, 6659, 8388, 8389, 46872, 50553, 51820}
         for line in listening.splitlines():
             fields = line.split()
             if len(fields) > 4:
@@ -110,7 +124,7 @@ def firewall(request):
         tcp_ports = sorted(set(tcp_ports + request.get('extra_tcp_ports', [])))
         udp_ports = sorted(set(udp_ports + request.get('extra_udp_ports', [])))
     if request.get('self_steal'):
-        tcp_ports.append(c.selfsteal_port(request))
+        tcp_ports.extend(c.selfsteal_tcp_ports(request))
     for port in sorted(set(tcp_ports)):
         if request.get('relay_ip'):
             c.run(['ufw', 'allow', 'from', request['relay_ip'], 'to', 'any', 'port', str(port), 'proto', 'tcp'])
@@ -159,6 +173,9 @@ def certificate(request):
         raise RuntimeError('Не подтверждены условия выпуска сертификата Let’s Encrypt')
     command = ['certbot', 'certonly', '--standalone', '--non-interactive', '--agree-tos',
                '--keep-until-expiring', '--cert-name', request['domain'], '-d', request['domain']]
+    from vps_migration.core.selfsteal_options import validate
+    for domain in validate(request.get('selfsteal_options'))['additional_domains']:
+        command += ['-d', domain]
     if request.get('email'):
         command += ['--email', request['email']]
     else:
@@ -182,7 +199,7 @@ def certificate(request):
     text += '  domain=' + request['domain'] + '\n  install -d -m 700 "/root/3x-ui/cert/$domain"\n'
     text += '  install -m 600 "$RENEWED_LINEAGE/fullchain.pem" "/root/3x-ui/cert/$domain/fullchain.pem"\n'
     text += '  install -m 600 "$RENEWED_LINEAGE/privkey.pem" "/root/3x-ui/cert/$domain/privkey.pem"\nfi\n'
-    text += 'for name in vpn-hysteria2 vpn-selfsteal-xray vpn-selfsteal-hysteria2 3dp-frontend 3x-ui; do\n'
+    text += 'for name in vpn-hysteria2 vpn-selfsteal-xray vpn-selfsteal-site vpn-selfsteal-hysteria2 3dp-frontend 3x-ui; do\n'
     text += '  if [ "$(docker inspect -f \'{{.State.Running}}\' "$name" 2>/dev/null || true)" = true ]; then docker restart "$name" >/dev/null; fi\n'
     text += 'done\n'
     c.write(hook, text)
@@ -252,7 +269,7 @@ def rewrite_host_settings(manifest, request):
             if request.get('relay_ip') and path.is_relative_to(c.ROOT / 'exports'):
                 endpoint_request = {**request, 'ip': request['relay_ip']}
             if path == c.ROOT / 'config/selfsteal-edge/server.cfg':
-                updated = selfsteal.edge_configuration(request['domain'])
+                updated = selfsteal.edge_configuration(request['domain'], request)
             elif path.suffix == '.json':
                 try:
                     value = json.loads(text)
@@ -650,7 +667,7 @@ def verify_proxy_client(role, protocol, request):
     if not profile.exists():
         raise RuntimeError('Не найден экспорт доступа для проверки: ' + role + '/' + protocol)
     config = json.loads(profile.read_text())
-    if protocol in ['xray', 'selfsteal-vless', 'selfsteal-xhttp']:
+    if protocol == 'xray' or (protocol.startswith('selfsteal-') and protocol != 'selfsteal-hysteria2'):
         config['inbounds'] = [{'listen': '0.0.0.0', 'port': 10808, 'protocol': 'socks', 'settings': {'udp': False}}]
         server_name = 'amnezia-xray' if protocol == 'xray' else 'vpn-selfsteal-xray'
         server = c.docker_json('inspect', server_name)[0]
@@ -688,6 +705,11 @@ def verify_proxy_client(role, protocol, request):
             'https://example.com/'], timeout=40)
         if response.stdout.strip() != b'200':
             raise RuntimeError('HTTPS через ' + protocol + '/' + role + ' не прошёл проверку')
+        if protocol.endswith('warp'):
+            trace = c.run(['curl', '--fail', '--silent', '--show-error', '--max-time', '30',
+                '--proxy', 'socks5h://' + address + ':10808', 'https://www.cloudflare.com/cdn-cgi/trace'], timeout=40).stdout
+            if not any(line in [b'warp=on', b'warp=plus'] for line in trace.splitlines()):
+                raise RuntimeError('Профиль WARP не подтвердил выход через Cloudflare')
     finally:
         if created:
             current = c.docker_json('inspect', name)[0]
@@ -729,13 +751,22 @@ def verify_and_export(request, job):
         if stack.exists('vpn-hysteria2'):
             verify_proxy_client(role, 'hysteria2', request)
         if request.get('self_steal'):
-            for protocol in ['selfsteal-vless', 'selfsteal-xhttp', 'selfsteal-hysteria2']:
+            from vps_migration.server.selfsteal_features.profiles import checks as profile_checks
+            for protocol in profile_checks(request):
+                progress('Проверка ' + protocol + '/' + role)
                 verify_proxy_client(role, protocol, request)
     if request.get('self_steal'):
         site = c.run(['curl', '--fail', '--silent', '--show-error', '--max-time', '30',
                       'https://' + request['domain'] + ':' + str(c.selfsteal_port(request)) + '/'], timeout=40)
-        if b'<title>Welcome</title>' not in site.stdout:
+        if request.get('site_sha256'):
+            expected = c.checksum(c.ROOT / 'config/selfsteal-site/content/index.html')
+            if hashlib.sha256(site.stdout).hexdigest() != expected:
+                raise RuntimeError('Свой сайт через публичный вход не совпал с загруженным index.html')
+        elif b'<title>Welcome</title>' not in site.stdout:
             raise RuntimeError('Сайт Self-Steal через публичный вход не прошёл проверку')
+    if request.get('full_selfsteal') and request.get('selfsteal_options', {}).get('subscriptions', True):
+        from vps_migration.server.selfsteal_features.subscriptions import verify
+        verify(request)
     for name, previous in checks.items():
         current = c.docker_json('inspect', name)[0]
         if not current['State']['Running'] or current['RestartCount'] != previous['restart_count']:
@@ -754,7 +785,9 @@ def verify_and_export(request, job):
               'self_steal': bool(request.get('self_steal')), 'relay_ip': request.get('relay_ip'),
               'selfsteal_port': c.selfsteal_port(request) if request.get('self_steal') else None,
               'protocol_priority': ['amnezia', 'new', 'reserve'],
-              'new_protocol_checks': ['selfsteal-vless', 'selfsteal-xhttp', 'selfsteal-hysteria2'] if request.get('self_steal') else [],
+              'new_protocol_checks': profile_checks(request) if request.get('self_steal') else [],
+              'full_selfsteal': bool(request.get('full_selfsteal')),
+              'selfsteal_reality_port': c.selfsteal_reality_port(request) if len(c.selfsteal_tcp_ports(request)) == 2 else None,
               'external_vpn_protocols': ['xray'] if c.network_profile(request) == 'filtered' else ['xray', 'amneziawg', 'telegram', 'wireguard', 'openvpn', 'shadowsocks', 'hysteria2'],
               'panel_https': 200, 'client_network_tests': 'required',
               'manager_login_and_protected_api': True,

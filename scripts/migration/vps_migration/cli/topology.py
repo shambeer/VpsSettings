@@ -14,7 +14,7 @@ def choose(connect, ask, target):
         entry = connect('Российский relay: отдельный чистый VPS, root по SSH-ключу и Python 3.11+')
         if entry.address == target.address:
             raise ValueError('Relay и основной VPS должны быть разными серверами')
-    return {'self_steal': True, 'relay_ip': entry.address if entry else None}, entry
+    return {'self_steal': True, 'full_selfsteal': True, 'relay_ip': entry.address if entry else None}, entry
 
 
 def relay_request(entry, origin, request):
@@ -35,7 +35,10 @@ def bundle_settings(path, scheme):
     if manifest.get('format') != 1:
         raise ValueError('Поддерживается полная копия формата 1')
     tcp, udp = set(), set()
+    private_ports = set()
     preferred_port = 8443
+    preferred_reality = 8444
+    has_site_http = any(item['Name'].lstrip('/') == 'vpn-selfsteal-site' and (item['HostConfig'].get('PortBindings') or {}).get('80/tcp') for item in manifest['containers'])
     has_selfsteal = any(item['Name'].lstrip('/') == 'vpn-edge' for item in manifest['containers'])
     self_steal = scheme.get('self_steal') or has_selfsteal
     if scheme.get('relay_ip') and any(item.get('EnableIPv6') for item in manifest.get('networks', {}).values()):
@@ -46,24 +49,31 @@ def bundle_settings(path, scheme):
             raise ValueError('Добавление Self-Steal к host/container network требует ручного переноса; прежний сервер не менялся')
         for inside, bindings in (host.get('PortBindings') or {}).items():
             for binding in bindings or []:
-                if binding.get('HostIp') in ['127.0.0.1', '::1']:
-                    continue
                 port = int(binding['HostPort'])
                 if not 1 <= port <= 65535:
                     raise ValueError('Недопустимый порт в копии')
+                if binding.get('HostIp') in ['127.0.0.1', '::1']:
+                    if item['Name'].lstrip('/') not in ['vpn-edge', 'vpn-selfsteal-hysteria2']:
+                        private_ports.add(port)
+                    continue
                 if item['Name'].lstrip('/') == '3x-ui' and inside == '2053/tcp':
                     continue
                 if item['Name'].lstrip('/') in ['vpn-edge', 'vpn-selfsteal-hysteria2']:
-                    if item['Name'].lstrip('/') == 'vpn-edge' and port != 443:
+                    if item['Name'].lstrip('/') == 'vpn-edge' and inside == '443/tcp' and port != 443:
                         preferred_port = port
+                    if item['Name'].lstrip('/') == 'vpn-edge' and inside == '444/tcp':
+                        preferred_reality = port
                     continue
                 (tcp if inside.endswith('/tcp') else udp).add(port)
-    occupied = tcp | udp
+    occupied = tcp | udp | private_ports
     port = next((value for value in [preferred_port, *range(8443, 8544)] if value not in occupied and value != 443), None)
     if port is None:
         raise ValueError('Не найден свободный порт для новых способов в диапазоне 8443–8543')
-    return {'self_steal': self_steal, 'selfsteal_port': port, 'restore_shared_edge': has_selfsteal,
-            'extra_tcp_ports': sorted(tcp), 'extra_udp_ports': sorted(udp)}
+    reality = next((value for value in [preferred_reality, *range(8443, 8544)] if value not in occupied and value != port and value != 443), None)
+    if reality is None:
+        raise ValueError('Не найден отдельный свободный порт REALITY')
+    return {'self_steal': self_steal, 'selfsteal_port': port, 'selfsteal_reality_port': reality, 'restore_shared_edge': has_selfsteal, 'has_selfsteal_http': has_site_http,
+            'extra_tcp_ports': sorted(tcp), 'extra_udp_ports': sorted(udp), 'reserved_binding_ports': sorted(occupied)}
 
 
 def save_relay_instructions(output, entry, job):

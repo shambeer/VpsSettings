@@ -304,12 +304,18 @@ def main():
     parser = argparse.ArgumentParser(description='Развёртывание и миграция VPN без передачи SSH-приватного ключа')
     parser.add_argument('--check', action='store_true', help='проверить локальные файлы; не подключаться к серверу')
     parser.add_argument('--resume', type=Path, help='продолжить операцию из session.json')
+    parser.add_argument('--options', type=Path, help='JSON с дополнительными параметрами Self-Steal')
     args = parser.parse_args()
     state = session.Session(args.resume)
     if args.resume:
         if ui.prompt('Продолжить ранее согласованную операцию? Введите RESUME', None) != 'RESUME':
             raise RuntimeError('Продолжение отменено')
     with session.active(state):
+        if args.resume and args.options:
+            raise RuntimeError('При --resume параметры берутся из журнала; --options менять нельзя')
+        if not args.resume:
+            from vps_migration.cli.selfsteal import options
+            state.state['selfsteal_options'] = options(args.options)
         try:
             execute_wizard(args)
             state.state['done'] = True
@@ -367,6 +373,15 @@ def execute_wizard(args):
     target = connection('Новый сервер: только чистая установка, Ubuntu/Debian, root и Python 3.11+')
     scheme, entry = topology.choose(connection, ask, target)
     scheme.update(topology.bundle_settings(bundle, scheme))
+    scheme['selfsteal_options'] = session.ACTIVE.state['selfsteal_options'] if session.ACTIVE else {}
+    for option, setting in [('tls_port', 'selfsteal_port'), ('reality_port', 'selfsteal_reality_port')]:
+        if option in scheme['selfsteal_options']:
+            port = scheme['selfsteal_options'][option]
+            if port in scheme.get('reserved_binding_ports', []):
+                raise ValueError('Выбранный новый порт занят сохранённым приложением; Amnezia не будет изменена')
+            scheme[setting] = port
+    if scheme['selfsteal_options'].get('reality', True):
+        c.selfsteal_reality_port(scheme)
     if entry:
         target.use_jump(entry, output)
     public_ip = entry.address if entry else target.address
@@ -388,6 +403,13 @@ def execute_wizard(args):
     print('Сетевой профиль: ' + network_profile + '. Маскировка не устраняет блокировку всего IP.')
     print('Основной VPS: ' + target.address + '; вход: ' + public_ip + '; домен: ' + domain)
     print('Приоритет: Amnezia → новые способы → остальные. Порт новых способов: ' + str(c.selfsteal_port(scheme)))
+    if scheme.get('full_selfsteal'):
+        print('Полный набор Self-Steal: TLS, REALITY на собственный сайт, XHTTP, WARP и HTTPS-подписки.')
+        print('HTTP 80 будет обслуживать ACME/webroot и перенаправление на сайт; старый Certbot может дополнительно перевыпустить сертификат.')
+        if scheme['selfsteal_options'].get('reality', True):
+            print('Дополнительный TCP-порт REALITY: ' + str(c.selfsteal_reality_port(scheme)))
+        if scheme['selfsteal_options'].get('warp', True):
+            print('DEPLOY также разрешает регистрацию WARP по условиям Cloudflare: https://www.cloudflare.com/application/terms/')
     if entry:
         print('Relay будет пересылать TCP/UDP без расшифровки; дополнительный участок может увеличить задержку.')
     print('Подтверждение также означает согласие с условиями Let’s Encrypt: https://letsencrypt.org/repository/')
@@ -397,9 +419,16 @@ def execute_wizard(args):
         raise RuntimeError('Настройка relay отменена')
     request = {'mode': 'fresh' if mode == '1' else 'restore', 'ip': target.address, 'domain': domain,
                'camouflage': camouflage, 'email': email, 'acme_agreed': True, 'ssh_port': target.port,
-               'network_profile': network_profile, 'fingerprint': selected_fingerprint, **scheme}
+               'network_profile': network_profile, 'fingerprint': selected_fingerprint,
+               'warp_terms_accepted': scheme['selfsteal_options'].get('warp', True), **scheme}
+    from vps_migration.cli.selfsteal import site_archive
+    site = site_archive(output, scheme['selfsteal_options'])
+    if site:
+        request['site_sha256'] = site['sha256']
     job = prepare(target, request, output)
     c.write(output / 'operation.json', {'remote_job': job, 'target_ip': target.address, 'mode': request['mode']})
+    if site:
+        target.upload(site['path'], job + '/site-content.tar.gz')
     action(target, job, 'preflight')
     entry_job = None
     if entry:
@@ -419,6 +448,10 @@ def execute_wizard(args):
         target.download(job + '/access-files.tar.gz', output / 'access-files.tar.gz')
         target.download(job + '/deploy-result.json', output / 'deploy-result.json')
         c.safe_extract(output / 'access-files.tar.gz', output / 'access')
+        panels = output / 'access/admin/panels.json'
+        from vps_migration.cli.selfsteal import export_tunnel
+        base_path = json.loads(panels.read_text())['xui_base_path'] if panels.exists() else '/'
+        export_tunnel(target, output, base_path)
         harden_connection(target, job)
         if entry:
             harden_connection(entry, entry_job)

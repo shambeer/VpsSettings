@@ -42,7 +42,7 @@ def approve_os_updates(host, job, output):
 
 def download_backups(host, job, output):
     failed = []
-    for name in ['os-config-backup.tar.gz', 'cleanup-backup.tar.gz', 'os-upgrade-result.json', 'cleanup-progress.json']:
+    for name in ['os-config-backup.tar.gz', 'cleanup-backup.tar.gz', 'os-upgrade-result.json', 'cleanup-progress.json', 'selfsteal-before-features.tar.gz', 'certificate-renewal-before-webroot.conf', 'certificate-webroot.json']:
         try:
             command = 'if test -f ' + shlex.quote(job + '/' + name) + '; then printf yes; fi'
             if host.ssh(command, capture=True, quiet=True).strip() == b'yes':

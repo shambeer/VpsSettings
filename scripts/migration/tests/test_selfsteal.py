@@ -124,7 +124,7 @@ class SelfStealTests(unittest.TestCase):
             self.assertEqual([call.args[0] for call in create.call_args_list],
                              ['vpn-selfsteal-xray', 'vpn-selfsteal-site', 'vpn-edge', 'vpn-selfsteal-hysteria2'])
             self.assertNotIn('ports', create.call_args_list[0].kwargs)
-            self.assertNotIn('ports', create.call_args_list[1].kwargs)
+            self.assertFalse(create.call_args_list[1].kwargs.get('ports'))
             index = c.ROOT / 'config/selfsteal-site/index.html'
             self.assertIn('<title>Welcome</title>', index.read_text())
             if os.name != 'nt':
