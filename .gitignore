@@ -8,3 +8,4 @@ __pycache__/
 .agentsroom/fork-context-*.txt
 .agentsroom/transfer-context-*.txt
 .agentsroom/handoff-context-*.txt
+/.agentsroom/
