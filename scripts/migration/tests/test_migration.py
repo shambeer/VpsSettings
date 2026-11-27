@@ -26,6 +26,17 @@ import build_portable
 
 
 class MigrationTests(unittest.TestCase):
+    def test_prompts_explain_waiting_defaults_and_retry_required_input(self):
+        with patch('builtins.input', side_effect=['', 'answer']), patch('sys.stdout', new_callable=io.StringIO) as output:
+            self.assertEqual(migrate.ask('Required'), 'answer')
+        self.assertIn('[ОЖИДАНИЕ ВВОДА]', output.getvalue())
+        self.assertIn('Поле обязательно', output.getvalue())
+        with patch('builtins.input', return_value=''), patch('sys.stdout', new_callable=io.StringIO) as output:
+            self.assertEqual(migrate.ask('Mode', '2'), '2')
+        self.assertIn('Enter без ввода: 2', output.getvalue())
+        with patch('builtins.input', return_value=''), patch('sys.stdout', new_callable=io.StringIO):
+            self.assertEqual(migrate.ask('Optional', ''), '')
+
     def test_quoted_local_paths(self):
         path = Path(__file__).resolve()
         for value in [str(path), '"' + str(path) + '"', "'" + str(path) + "'"]:

@@ -19,8 +19,20 @@ REPOSITORY = HERE.parent.parent
 
 
 def ask(prompt, default=None):
-    value = input(prompt + (' [' + str(default) + ']' if default is not None else '') + ': ').strip()
-    return value or default
+    print('\n[ОЖИДАНИЕ ВВОДА] ' + prompt, flush=True)
+    if default is None:
+        print('Введите значение и нажмите Enter. Поле обязательно.', flush=True)
+    elif default == '':
+        print('Введите значение и нажмите Enter. Чтобы пропустить, нажмите Enter.', flush=True)
+    else:
+        print('Введите значение и нажмите Enter. Enter без ввода: ' + str(default), flush=True)
+    while True:
+        value = input('> ').strip()
+        if value:
+            return value
+        if default is not None:
+            return default
+        print('Значение не введено. Введите его после > и нажмите Enter.', flush=True)
 
 
 def local_path(value):
@@ -73,6 +85,7 @@ def connection(label):
 
 
 def prepare(remote, request, output):
+    print('\n[ВЫПОЛНЯЕТСЯ] Проверка SSH и загрузка файлов на сервер. Ввод не требуется.', flush=True)
     if remote.ssh('id -u', capture=True).strip() != b'0':
         raise RuntimeError('Требуется успешный вход root по указанному ключу')
     session = remote.ssh('printf "%s" "$SSH_CONNECTION"', capture=True).decode().split()
@@ -161,6 +174,8 @@ def main():
     for tool in ['ssh', 'scp']:
         if shutil.which(tool) is None:
             raise RuntimeError('Не найден OpenSSH: ' + tool)
+    print('\nМастер готов. Выбирайте пункты цифрой и нажимайте Enter.', flush=True)
+    print('При отметке [ОЖИДАНИЕ ВВОДА] программа ждёт ваш ответ после >. Отмена: Ctrl+C.', flush=True)
     print('1 — Новая установка с личными и общими доступами')
     print('2 — Перенос существующих доступов из полной копии + резервные протоколы')
     print('3 — Только создать полную копию старого сервера')
