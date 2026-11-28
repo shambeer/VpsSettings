@@ -101,12 +101,13 @@ def portal(request, role, token):
         raise ValueError('Недопустимая роль или токен выдачи')
     directory = c.ROOT / 'exports' / role
     base = 'https://' + request['domain'] + ':' + str(c.selfsteal_port(request))
-    url = base + '/access/' + token + '/'
+    url = base + '/access/' + token
     subscription = base + '/sub/' + token
     target = c.ROOT / 'config/selfsteal-site/content/.client-access' / token
     target.mkdir(parents=True, exist_ok=True)
+    target.parent.chmod(0o755)
     target.chmod(0o755)
-    entries, rows, locations = [], [], []
+    entries, rows, locations, featured = [], [], [], []
     package = io.BytesIO()
     total = 0
     with zipfile.ZipFile(package, 'w', zipfile.ZIP_DEFLATED) as archive:
@@ -131,8 +132,14 @@ def portal(request, role, token):
                 (target / name).chmod(0o644)
                 relative = path.relative_to(directory).as_posix()
                 archive.writestr(relative, content)
-                entries.append({'file': relative, 'url': url + name, 'sha256': hashlib.sha256(content).hexdigest()})
-                rows.append('<li><a href="' + url + name + '">' + html.escape(relative) + '</a></li>')
+                entries.append({'file': relative, 'url': url + '/' + name, 'sha256': hashlib.sha256(content).hexdigest()})
+                rows.append('<li><a href="' + url + '/' + name + '">' + html.escape(relative) + '</a></li>')
+                if relative in ['configurations/amneziawg.conf', 'configurations/wireguard.conf', 'configurations/openvpn.ovpn']:
+                    featured.append('<p><a href="' + url + '/' + name + '">Скачать ' + html.escape(path.stem) + '</a></p>')
+                if relative == 'strings/telegram.txt':
+                    telegram = content.decode('utf-8').strip()
+                    if telegram.startswith('tg://proxy?') and not any(char in telegram for char in ['\r', '\n', '"', '<', '>']):
+                        featured.append('<p><a href="' + html.escape(telegram, quote=True) + '">Открыть Telegram-прокси</a></p>')
         manifest = {'role': role, 'subscription': subscription, 'files': entries}
         archive.writestr('manifest.json', json.dumps(manifest, ensure_ascii=False, indent=2))
     c.write(target / 'all.zip', package.getvalue())
@@ -143,7 +150,7 @@ def portal(request, role, token):
             '<textarea readonly rows="3" cols="60">' + html.escape(subscription) + '</textarea>'
             '<p>XRay, XHTTP, Shadowsocks и Hysteria2 — в подписке. AmneziaWG, WireGuard и OpenVPN — файлами ниже; Telegram — в strings/telegram.txt.</p>'
             '<p>AmneziaWG требует поддержки AWG; обычный WireGuard не заменяет его.</p>'
-            '<p><a href="' + url + 'all.zip">Скачать все конфигурации ZIP</a></p><ul>' + ''.join(rows) + '</ul></body></html>')
+            + ''.join(featured) + '<p><a href="' + url + '/all.zip">Скачать все конфигурации ZIP</a></p><ul>' + ''.join(rows) + '</ul></body></html>')
     c.write(target / 'index.html', page)
     c.write(directory / 'delivery/manifest.json', manifest)
     c.write(directory / 'delivery/index.html', page)
@@ -151,10 +158,22 @@ def portal(request, role, token):
     c.write(directory / 'delivery/start.txt', url + '\nПодписка: ' + subscription + '\n')
     for name in ['index.html', 'all.zip', 'manifest.json', *[str(index) + Path(entry['url']).suffix for index, entry in enumerate(entries)]]:
         (target / name).chmod(0o644)
-        route = '/access/' + token + '/' + ('' if name == 'index.html' else name)
+        route = '/access/' + token + ('' if name == 'index.html' else '/' + name)
         mime = 'text/html' if name == 'index.html' else 'application/zip' if name == 'all.zip' else 'application/octet-stream'
         locations.append('location = ' + route + ' { ' + HEADERS + 'default_type ' + mime + '; types {} alias /usr/share/nginx/html/.client-access/' + token + '/' + name + '; }\n')
     return ''.join(locations)
+
+
+def verify(request, state):
+    for role in ['personal', 'shared']:
+        token = state['subscription_tokens'][role]
+        url = 'https://' + request['domain'] + ':' + str(c.selfsteal_port(request)) + '/access/' + token
+        for remote, local in [('', 'index.html'), ('/manifest.json', 'manifest.json'), ('/all.zip', 'all.zip')]:
+            response = c.run(['curl', '--fail', '--silent', '--show-error', '--max-time', '60', '--config', '-'],
+                             content=('url = "' + url + remote + '"\n').encode(), timeout=70).stdout
+            expected = c.ROOT / 'exports' / role / 'delivery' / local
+            if hashlib.sha256(response).hexdigest() != c.checksum(expected):
+                raise RuntimeError('Единая HTTPS-выдача не прошла проверку для роли ' + role)
 
 
 def configure(request, state):
@@ -175,7 +194,7 @@ def configure(request, state):
         token = state['subscription_tokens'][role]
         content = (c.ROOT / 'exports' / role / 'subscriptions/base64.txt').read_text()
         upload(role, content)
-        locations.append('location = /sub/' + token + ' { ' + HEADERS + 'proxy_pass http://vpn-sub-store:3000/api/file/vps-' + role + '?; }\n')
+        locations.append('location = /sub/' + token + ' { ' + HEADERS + 'limit_except GET { deny all; } set $args ""; proxy_pass http://vpn-sub-store:3000/api/file/vps-' + role + '; }\n')
         locations.append(portal(request, role, token))
     c.write(c.ROOT / 'exports/admin/sub-store.json', {'local_port': state['sub_store_port'],
             'url': 'http://127.0.0.1:' + str(state['sub_store_port']),

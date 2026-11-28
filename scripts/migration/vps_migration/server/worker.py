@@ -306,7 +306,7 @@ def rewrite_host_settings(manifest, request):
 
 
 def start_restored(manifest, request):
-    order = ['3dp-postgres', 'amnezia-xray', 'amnezia-awg2', 'amnezia-telemt', '3x-ui', '3dp-backend', '3dp-frontend',
+    order = ['3dp-postgres', 'amnezia-xray', 'amnezia-awg2', 'amnezia-telemt', '3x-ui', '3dp-backend', '3dp-frontend', 'vpn-sub-store',
              *selfsteal.NAMES]
     names = [item['Name'].lstrip('/') for item in manifest['containers']]
     for name in order + [value for value in names if value not in order]:

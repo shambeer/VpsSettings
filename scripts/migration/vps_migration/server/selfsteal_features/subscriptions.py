@@ -72,3 +72,6 @@ def verify(request):
         expected = (c.ROOT / 'exports' / role / 'subscriptions/base64.txt').read_bytes().strip()
         if response != expected:
             raise RuntimeError('HTTPS-подписка не прошла проверку для роли ' + role)
+    if request.get('selfsteal_options', {}).get('sub_store'):
+        from vps_migration.server.selfsteal_features import substore
+        substore.verify(request, state)

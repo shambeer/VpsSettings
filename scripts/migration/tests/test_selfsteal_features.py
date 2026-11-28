@@ -18,6 +18,24 @@ from vps_migration.cli.selfsteal import site_archive, choose_warp
 
 
 class FullSelfStealTests(unittest.TestCase):
+    def test_substore_https_checks_fail_when_any_delivery_file_is_changed(self):
+        from types import SimpleNamespace
+        self.state['subscription_tokens'] = {'personal': 'a' * 64, 'shared': 'b' * 64}
+        with patch.object(c, 'ROOT', self.root):
+            for role in ['personal', 'shared']:
+                c.write(self.root / 'exports' / role / 'configurations/amneziawg.conf', role)
+                substore.portal(self.request, role, self.state['subscription_tokens'][role])
+            def response(arguments, content, timeout):
+                url = content.decode()
+                role = 'personal' if 'a' * 64 in url else 'shared'
+                name = 'manifest.json' if '/manifest.json' in url else 'all.zip' if '/all.zip' in url else 'index.html'
+                return SimpleNamespace(stdout=(self.root / 'exports' / role / 'delivery' / name).read_bytes())
+            with patch.object(c, 'run', side_effect=response) as execute:
+                substore.verify(self.request, self.state)
+                self.assertEqual(execute.call_count, 6)
+            with patch.object(c, 'run', return_value=SimpleNamespace(stdout=b'CHANGED')), self.assertRaises(RuntimeError):
+                substore.verify(self.request, self.state)
+
     def test_substore_delivery_has_all_client_files_and_no_admin_or_other_role(self):
         import io
         import zipfile
@@ -71,8 +89,8 @@ class FullSelfStealTests(unittest.TestCase):
                 links = base64.b64decode(call.args[1]).decode().splitlines()
                 self.assertIn(original, links)
                 self.assertEqual(len(links), 7)
-            self.assertIn('proxy_pass http://vpn-sub-store:3000/api/file/vps-personal?;', locations)
-            self.assertNotIn('$args', locations)
+            self.assertIn('proxy_pass http://vpn-sub-store:3000/api/file/vps-personal;', locations)
+            self.assertIn('set $args "";', locations)
             self.assertNotIn('$request_uri', locations)
 
     def setUp(self):
