@@ -277,6 +277,7 @@ def panels(request):
     administrator = {'login': 'owner', 'xui_password': c.password(), 'manager_password': c.password(),
                      'xui_base_path': '/' + secrets.token_hex(10) + '/',
                      'xui_url': 'http://127.0.0.1:2053', 'manager_url': 'https://' + request['domain'] + ':6659'}
+    c.write(c.ROOT / 'exports/admin/panels.json', administrator)
     xui = c.ROOT / 'config/xui'
     xui.mkdir(parents=True)
     create('3x-ui', image('xui'), ports={'2053/tcp': [('127.0.0.1', 2053)]}, mounts=[bind(xui, '/etc/x-ui', False)])
@@ -288,6 +289,7 @@ def panels(request):
     db_password = c.password()
     pg = c.ROOT / 'config/postgres'
     pg.mkdir(parents=True)
+    pg.chmod(0o755)
     create('3dp-postgres', image('postgres'), mounts=[bind(pg, '/var/lib/postgresql', False)],
            environment={'POSTGRES_USER': 'manager', 'POSTGRES_PASSWORD': db_password, 'POSTGRES_DB': 'manager'}, aliases=['postgres'])
     for attempt in range(60):

@@ -106,6 +106,22 @@ def refresh():
     command(['apt-get', '-o', 'APT::Update::Error-Mode=any', 'update'], timeout=1800)
 
 
+def validate_grub_devices(changes):
+    if not any(row['package'].split(':', 1)[0] == 'grub-pc' for row in changes):
+        return
+    if not shutil.which('debconf-show'):
+        raise RuntimeError('Не удалось проверить устройства GRUB перед обновлением grub-pc')
+    settings = command(['debconf-show', 'grub-pc']).stdout.decode()
+    match = re.search(r'^[ \t]*\*?[ \t]*grub-pc/install_devices:[ \t]*(.*)$', settings, re.MULTILINE)
+    devices = [value.strip() for value in match[1].split(',') if value.strip()] if match else []
+    if not devices:
+        raise RuntimeError('Перед обновлением grub-pc нужно явно проверить выбранный загрузочный диск')
+    missing = [device for device in devices if not device.startswith('/dev/') or not Path(device).exists()]
+    if missing:
+        raise RuntimeError('Настройки GRUB ссылаются на отсутствующий диск: ' + ', '.join(missing)
+                           + '; требуется проверка загрузчика до обновления ОС')
+
+
 def upgrade_plan(refresh_indexes=True):
     if refresh_indexes:
         refresh()
@@ -115,6 +131,7 @@ def upgrade_plan(refresh_indexes=True):
     unsafe = [row['package'] for row in transaction['removals'] if is_protected(row['package'], forbidden) or critical(row['package'])]
     if unsafe:
         raise RuntimeError('APT предлагает удалить защищённые системные/VPN-пакеты: ' + ', '.join(unsafe))
+    validate_grub_devices(transaction['changes'])
     held = command(['apt-mark', 'showhold']).stdout.decode().splitlines()
     return {'task': 'os', 'transaction': transaction, 'fingerprint': fingerprint(transaction),
             'held': sorted(held), 'failed_units_before': failed_units(), 'installed_before': packages}

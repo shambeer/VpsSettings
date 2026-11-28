@@ -157,7 +157,7 @@ def backup(request, job):
         c.write(directory / 'checksums.json', {path.relative_to(directory).as_posix(): c.checksum(path) for path in files})
     finally:
         failures = []
-        start_order = ['3dp-postgres'] + [name for name in running if name != '3dp-postgres']
+        start_order = ['3dp-postgres', 'vpn-sub-store'] + [name for name in running if name not in ['3dp-postgres', 'vpn-sub-store']]
         for name in start_order:
             if name not in running:
                 continue

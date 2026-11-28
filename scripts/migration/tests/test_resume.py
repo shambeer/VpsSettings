@@ -128,6 +128,7 @@ class ResumeTests(unittest.TestCase):
                 created, finished = [], set()
                 disconnected = False
                 def prepare(host, request, output):
+                    self.assertIs(request['low_memory'], True)
                     def create():
                         created.append(host.address)
                         return '/root/vps-transfer/' + request['mode']
@@ -147,7 +148,7 @@ class ResumeTests(unittest.TestCase):
                      patch.object(wizard.Connection, 'download'), patch.object(c, 'safe_extract'), \
                      patch.object(wizard.shutil, 'which', return_value='tool'), \
                      patch('sys.stdout', new_callable=io.StringIO), patch('sys.stderr', new_callable=io.StringIO):
-                    with patch('sys.argv', ['migrate.py']), patch('builtins.input', side_effect=answers):
+                    with patch('sys.argv', ['migrate.py', '--low-memory']), patch('builtins.input', side_effect=answers):
                         with self.assertRaises(KeyboardInterrupt):
                             wizard.main()
                     journal = next((folder / 'results').rglob('session.json'))

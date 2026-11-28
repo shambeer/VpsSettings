@@ -305,6 +305,7 @@ def main():
     parser.add_argument('--check', action='store_true', help='проверить локальные файлы; не подключаться к серверу')
     parser.add_argument('--resume', type=Path, help='продолжить операцию из session.json')
     parser.add_argument('--options', type=Path, help='JSON с дополнительными параметрами Self-Steal')
+    parser.add_argument('--low-memory', action='store_true', help='экспериментально: около 1 GiB RAM и уже настроенные 2 GiB swap; без гарантии нагрузки')
     args = parser.parse_args()
     state = session.Session(args.resume)
     if args.resume:
@@ -316,6 +317,9 @@ def main():
         if not args.resume:
             from vps_migration.cli.selfsteal import options
             state.state['selfsteal_options'] = options(args.options)
+            state.state['low_memory'] = args.low_memory
+        elif args.low_memory and not state.state.get('low_memory'):
+            raise RuntimeError('При --resume профиль памяти менять нельзя')
         try:
             execute_wizard(args)
             state.state['done'] = True
@@ -415,6 +419,9 @@ def execute_wizard(args):
         warp_accepted = choose_warp(target.address, scheme['selfsteal_options'], ask)
         scheme['selfsteal_options']['warp'] = warp_accepted
     ui.section('Проверка плана перед изменениями')
+    low_memory = session.ACTIVE.state.get('low_memory', False) if session.ACTIVE else getattr(args, 'low_memory', False)
+    if low_memory:
+        print('Экспериментальный режим 1 GiB RAM + 2 GiB swap. Обе панели сохраняются; большая нагрузка и 500 клиентов не испытаны.')
     if all_inclusive:
         print('Набор: Всё включено. При восстановлении основные приложения и панели берутся из копии.')
     if scheme['selfsteal_options'].get('sub_store'):
@@ -444,7 +451,7 @@ def execute_wizard(args):
     request = {'mode': 'fresh' if mode == '1' else 'restore', 'ip': target.address, 'domain': domain,
                'camouflage': camouflage, 'email': email, 'acme_agreed': True, 'ssh_port': target.port,
                'network_profile': network_profile, 'fingerprint': selected_fingerprint,
-               'warp_terms_accepted': warp_accepted, **scheme}
+               'warp_terms_accepted': warp_accepted, 'low_memory': low_memory, **scheme}
     from vps_migration.cli.selfsteal import site_archive
     site = site_archive(output, scheme['selfsteal_options'])
     if site:

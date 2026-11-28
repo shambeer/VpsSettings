@@ -26,6 +26,34 @@ from vps_migration.packaging import build as build_portable
 
 
 class MigrationTests(unittest.TestCase):
+    def test_low_memory_requires_explicit_opt_in_and_real_swap(self):
+        host = 'MemTotal: 1079628 kB\nSwapTotal: 2097148 kB\n'
+        with self.assertRaises(RuntimeError):
+            remote.validate_memory({}, host)
+        remote.validate_memory({'low_memory': True}, host)
+        with self.assertRaises(RuntimeError):
+            remote.validate_memory({'low_memory': True}, 'MemTotal: 1079628 kB\nSwapTotal: 0 kB\n')
+        with self.assertRaises(RuntimeError):
+            remote.validate_memory({'low_memory': True}, 'MemTotal: 524288 kB\nSwapTotal: 4194304 kB\n')
+        remote.validate_memory({}, 'MemTotal: 2097148 kB\nSwapTotal: 0 kB\n')
+
+    def test_panels_save_access_before_startup_and_allow_postgres_parent_traversal(self):
+        events = []
+        original_chmod = Path.chmod
+        def chmod(path, mode, *args, **kwargs):
+            events.append((path, mode))
+            return original_chmod(path, mode, *args, **kwargs)
+        def create(name, *args, **kwargs):
+            self.assertTrue((self.directory / 'exports/admin/panels.json').is_file())
+            if name == '3dp-postgres':
+                self.assertIn((self.directory / 'config/postgres', 0o755), events)
+                self.assertEqual(kwargs['mounts'][0]['Target'], '/var/lib/postgresql')
+        with patch.object(c, 'ROOT', self.directory), patch.object(c, 'password', return_value='TEST-ONLY'), \
+             patch.object(stack, 'image', return_value='test-image'), patch.object(stack, 'create', side_effect=create), \
+             patch.object(stack, 'wait_xui_user'), patch.object(c, 'run', return_value=SimpleNamespace(returncode=0, stdout=b'')), \
+             patch.object(Path, 'chmod', chmod):
+            stack.panels({'domain': 'entry.example.org'})
+
     def test_output_directory_choices_keep_backups_in_separate_operation_folders(self):
         for choice, folder in [('1', 'Desktop'), ('2', 'Documents'), ('3', 'Custom')]:
             base = self.directory / folder

@@ -33,6 +33,16 @@ def progress(value):
         c.write(c.JOB / 'progress.json', {'stage': value})
 
 
+def validate_memory(request, meminfo):
+    memory = int(re.search(r'MemTotal:\s+(\d+)', meminfo).group(1))
+    if request.get('low_memory') is True:
+        swap = re.search(r'SwapTotal:\s+(\d+)', meminfo)
+        if memory < 900 * 1024 or not swap or int(swap[1]) < 1900 * 1024:
+            raise RuntimeError('--low-memory требует около 1 GiB RAM и не менее 2 GiB настроенного swap')
+    elif memory < 1500 * 1024:
+        raise RuntimeError('Нужно минимум 1.5 GiB RAM; для экспериментального режима 1 GiB + 2 GiB swap используйте --low-memory')
+
+
 def preflight(request, target=True):
     if os.geteuid() != 0 or platform.system() != 'Linux':
         raise RuntimeError('Нужен root на Linux-сервере')
@@ -58,9 +68,9 @@ def preflight(request, target=True):
                 raise RuntimeError('Целевой сервер должен быть чистым: контейнеры уже существуют')
         if c.ROOT.exists():
             raise RuntimeError('/opt/vps-stack уже существует; автоматическая перезапись запрещена')
-        memory = int(re.search(r'MemTotal:\s+(\d+)', Path('/proc/meminfo').read_text()).group(1))
-        if memory < 1500 * 1024 or shutil.disk_usage('/').free < 6 * 1024 ** 3:
-            raise RuntimeError('Нужно минимум 1.5 GiB RAM и 6 GiB свободного диска; рекомендуется 2–4 GiB RAM')
+        validate_memory(request, Path('/proc/meminfo').read_text())
+        if shutil.disk_usage('/').free < 6 * 1024 ** 3:
+            raise RuntimeError('Нужно минимум 6 GiB свободного диска')
         addresses = {item[4][0] for item in socket.getaddrinfo(request['domain'], None, socket.AF_INET)}
         if addresses != {request.get('relay_ip') or request['ip']}:
             raise RuntimeError('Все A-записи домена должны указывать на IPv4 входа: relay либо основной VPS')

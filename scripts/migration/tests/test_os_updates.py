@@ -12,6 +12,23 @@ from vps_migration.server.maintenance import apt, operations
 
 
 class OsUpdateTests(unittest.TestCase):
+    def test_grub_update_refuses_stale_provider_disk_before_apt_changes(self):
+        changes = [{'package': 'grub-pc', 'from': '1', 'to': '2'}]
+        settings = b'* grub-pc/install_devices: /dev/disk/by-id/missing-template-disk\n'
+        with patch.object(apt.shutil, 'which', return_value='/usr/bin/debconf-show'), \
+             patch.object(apt, 'command', return_value=SimpleNamespace(stdout=settings)) as execute, \
+             patch.object(apt.Path, 'exists', return_value=False):
+            with self.assertRaisesRegex(RuntimeError, 'отсутствующий диск'):
+                apt.validate_grub_devices(changes)
+            self.assertEqual(execute.call_args.args[0], ['debconf-show', 'grub-pc'])
+        with patch.object(apt.shutil, 'which', return_value='/usr/bin/debconf-show'), \
+             patch.object(apt, 'command', return_value=SimpleNamespace(stdout=b'* grub-pc/install_devices: /dev/sda\n')), \
+             patch.object(apt.Path, 'exists', return_value=True):
+            apt.validate_grub_devices(changes)
+        with patch.object(apt, 'command') as execute:
+            apt.validate_grub_devices([{'package': 'curl', 'from': '1', 'to': '2'}])
+            execute.assert_not_called()
+
     def setUp(self):
         parent = Path(__file__).resolve().parents[3] / 'private-vpn/server-settings/tools/test-runtime'
         parent.mkdir(parents=True, exist_ok=True)
